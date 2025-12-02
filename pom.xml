@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.trading</groupId>
-    <artifactId>electricity-price-monitor</artifactId>
+    <artifactId>electricity-trading-websocket</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>electricity-price-monitor</name>
-    <description>Real-time electricity price monitor using WebSocket</description>
+    <name>electricity-trading-websocket</name>
+    <description>Real-time electricity trading platform using WebSocket/STOMP with JWT authentication</description>
 
     <properties>
         <java.version>21</java.version>
