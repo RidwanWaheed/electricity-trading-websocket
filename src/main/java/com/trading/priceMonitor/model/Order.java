@@ -1,15 +1,13 @@
 package com.trading.priceMonitor.model;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 
 public record Order(
     String orderId,
     String region,
     BigDecimal price,
     String type,
-    BigDecimal quantity,
-    Instant timestamp) {
+    BigDecimal quantity) {
   public Order {
     if (orderId == null || orderId.isBlank()) {
       throw new IllegalArgumentException("Order ID cannot be null or blank");
@@ -25,9 +23,6 @@ public record Order(
     }
     if (quantity == null) {
       throw new IllegalArgumentException("Quantity cannot be null");
-    }
-    if (timestamp == null) {
-      throw new IllegalArgumentException("Timestamp cannot be null");
     }
   }
 }

@@ -18,16 +18,13 @@ public class SecurityConfig {
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/api/auth/**")
-                    .permitAll()
-                    .requestMatchers("/ws/**")
-                    .permitAll()
-                    .requestMatchers("/ws-electricity/**")
-                    .permitAll()
-                    .requestMatchers("/ws-plain/**")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated());
+                auth.requestMatchers("/").permitAll()
+                    .requestMatchers("/index.html").permitAll()
+                    .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers("/ws/**").permitAll()
+                    .requestMatchers("/ws-electricity/**").permitAll()
+                    .requestMatchers("/ws-plain/**").permitAll()
+                    .anyRequest().authenticated());
     return http.build();
   }
 }

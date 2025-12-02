@@ -3,58 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Electricity Price Monitor</title>
+    <title>Electricity Trading Platform</title>
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
         h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; }
+        h2 { color: #00d4ff; margin-bottom: 15px; font-size: 16px; }
         .status { text-align: center; margin-bottom: 20px; padding: 10px; border-radius: 8px; }
         .status.connected { background: #0f5132; color: #75b798; }
         .status.disconnected { background: #842029; color: #ea868f; }
+        .status.logged-in { background: #0f3460; color: #00d4ff; }
         .controls { text-align: center; margin-bottom: 20px; }
         button { padding: 10px 24px; margin: 0 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
         button.connect { background: #00d4ff; color: #1a1a2e; }
         button.disconnect { background: #ff4757; color: white; }
+        button.logout { background: #ff4757; color: white; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        table { width: 100%; max-width: 900px; margin: 0 auto; border-collapse: collapse; background: #16213e; border-radius: 12px; overflow: hidden; }
-        th, td { padding: 16px; text-align: left; }
-        th { background: #0f3460; color: #00d4ff; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+
+        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 900px) { .container { grid-template-columns: 1fr; } }
+
+        .panel { background: #16213e; border-radius: 12px; padding: 20px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; }
+        th { background: #0f3460; color: #00d4ff; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
         tr:not(:last-child) td { border-bottom: 1px solid #0f3460; }
-        .price { font-weight: 700; font-size: 18px; }
+        .price { font-weight: 700; font-size: 16px; }
         .positive { color: #00ff88; }
         .negative { color: #ff4757; }
         .neutral { color: #aaa; }
-        .timestamp { color: #888; font-size: 12px; }
-        .log { max-width: 900px; margin: 30px auto; background: #16213e; border-radius: 12px; padding: 16px; max-height: 200px; overflow-y: auto; }
+        .timestamp { color: #888; font-size: 11px; }
+
+        /* Login Form */
+        .login-container { max-width: 400px; margin: 50px auto; }
+        .login-form { display: flex; flex-direction: column; gap: 15px; }
+        .login-form h2 { text-align: center; margin-bottom: 10px; }
+
+        /* Order Form */
+        .order-form { display: flex; flex-direction: column; gap: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .form-group input, .form-group select { padding: 12px; border: 1px solid #0f3460; border-radius: 6px; background: #1a1a2e; color: #eee; font-size: 14px; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #00d4ff; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        button.submit-order { background: #00ff88; color: #1a1a2e; width: 100%; margin: 10px 0 0 0; }
+        button.submit-order:hover { background: #00cc6a; }
+        button.login-btn { background: #00d4ff; color: #1a1a2e; width: 100%; margin: 10px 0 0 0; }
+
+        /* Confirmations */
+        .confirmation { padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; }
+        .confirmation.ACCEPTED { background: #0f5132; border-left: 4px solid #00ff88; }
+        .confirmation.REJECTED { background: #842029; border-left: 4px solid #ff4757; }
+        .confirmation.PENDING { background: #664d03; border-left: 4px solid #ffca2c; }
+        .confirmation-time { color: #888; font-size: 11px; margin-top: 5px; }
+        .no-confirmations { color: #888; font-style: italic; }
+
+        /* Log */
+        .log { max-width: 1200px; margin: 20px auto; background: #16213e; border-radius: 12px; padding: 16px; max-height: 150px; overflow-y: auto; }
         .log h3 { color: #00d4ff; margin-bottom: 10px; font-size: 14px; }
-        .log-entry { font-family: monospace; font-size: 12px; color: #888; margin: 4px 0; }
+        .log-entry { font-family: monospace; font-size: 11px; color: #888; margin: 4px 0; }
+        .log-entry.error { color: #ff4757; }
+
+        .hidden { display: none; }
+        .user-info { color: #00ff88; font-size: 14px; }
     </style>
 </head>
 <body>
-    <h1>Real-Time Electricity Prices</h1>
+    <h1>Electricity Trading Platform</h1>
 
-    <div id="status" class="status disconnected">Disconnected</div>
-
-    <div class="controls">
-        <button id="connectBtn" class="connect" onclick="connect()">Connect</button>
-        <button id="disconnectBtn" class="disconnect" onclick="disconnect()" disabled>Disconnect</button>
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-container">
+        <div class="panel">
+            <form class="login-form" onsubmit="login(event)">
+                <h2>Login</h2>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" value="trader1" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" value="password1" required>
+                </div>
+                <button type="submit" class="login-btn">Login</button>
+                <p style="color:#888; font-size:12px; text-align:center; margin-top:10px;">
+                    Demo users: trader1/password1, trader2/password2, admin/admin123
+                </p>
+            </form>
+        </div>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Region</th>
-                <th>Price (NGN/MWh)</th>
-                <th>Change</th>
-                <th>Last Updated</th>
-            </tr>
-        </thead>
-        <tbody id="priceTable">
-            <tr><td colspan="4" style="text-align:center; color:#888;">Connect to see live prices</td></tr>
-        </tbody>
-    </table>
+    <!-- TRADING SCREEN (hidden until logged in) -->
+    <div id="tradingScreen" class="hidden">
+        <div id="status" class="status disconnected">Disconnected</div>
+
+        <div class="controls">
+            <span class="user-info">Logged in as: <strong id="currentUser"></strong></span>
+            <button id="connectBtn" class="connect" onclick="connect()">Connect</button>
+            <button id="disconnectBtn" class="disconnect" onclick="disconnect()" disabled>Disconnect</button>
+            <button class="logout" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="container">
+            <!-- Left Panel: Prices -->
+            <div class="panel">
+                <h2>Live Prices</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Region</th>
+                            <th>Price (NGN/MWh)</th>
+                            <th>Change</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody id="priceTable">
+                        <tr><td colspan="4" style="text-align:center; color:#888;">Connect to see live prices</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Right Panel: Order Form + Confirmations -->
+            <div class="panel">
+                <h2>Submit Order</h2>
+                <form class="order-form" onsubmit="submitOrder(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Region</label>
+                            <select id="orderRegion" required>
+                                <option value="NORTH">North</option>
+                                <option value="SOUTH">South</option>
+                                <option value="EAST">East</option>
+                                <option value="WEST">West</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="orderType" required>
+                                <option value="BUY">Buy</option>
+                                <option value="SELL">Sell</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Quantity (MWh)</label>
+                            <input type="number" id="orderQuantity" min="1" step="1" value="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Price (NGN)</label>
+                            <input type="number" id="orderPrice" min="0.01" step="0.01" value="75.00" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="submit-order" id="submitBtn" disabled>Submit Order</button>
+                </form>
+
+                <h2 style="margin-top: 25px;">Order Confirmations</h2>
+                <div id="confirmations">
+                    <div class="no-confirmations">No confirmations yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="log">
         <h3>Connection Log</h3>
@@ -63,80 +175,135 @@
 
     <script>
         let stompClient = null;
-        const priceData = {}; // Store prices by region
+        let jwtToken = null;
+        let currentUsername = null;
+        const priceData = {};
+        let orderCounter = 1;
 
-        function log(message) {
+        // Client-side order tracking - stores pending orders by orderId
+        const pendingOrders = new Map();
+
+        function log(message, isError = false) {
             const logDiv = document.getElementById('logEntries');
             const entry = document.createElement('div');
-            entry.className = 'log-entry';
+            entry.className = 'log-entry' + (isError ? ' error' : '');
             entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
             logDiv.insertBefore(entry, logDiv.firstChild);
+        }
+
+        // ============================================
+        // LOGIN: Get JWT token from REST API
+        // ============================================
+        async function login(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            log(`Logging in as ${username}...`);
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Invalid credentials');
+                }
+
+                const data = await response.json();
+                jwtToken = data.token;
+                currentUsername = data.username;
+
+                log(`Login successful! Token received for ${currentUsername}`);
+
+                // Show trading screen, hide login
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('tradingScreen').classList.remove('hidden');
+                document.getElementById('currentUser').textContent = currentUsername;
+
+            } catch (error) {
+                log('Login failed: ' + error.message, true);
+            }
+        }
+
+        function logout() {
+            disconnect();
+            jwtToken = null;
+            currentUsername = null;
+            pendingOrders.clear(); // Clear pending orders on logout
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('tradingScreen').classList.add('hidden');
+            log('Logged out');
         }
 
         function setConnected(connected) {
             const status = document.getElementById('status');
             const connectBtn = document.getElementById('connectBtn');
             const disconnectBtn = document.getElementById('disconnectBtn');
+            const submitBtn = document.getElementById('submitBtn');
 
             if (connected) {
-                status.textContent = 'Connected';
+                status.textContent = 'Connected as ' + currentUsername;
                 status.className = 'status connected';
                 connectBtn.disabled = true;
                 disconnectBtn.disabled = false;
+                submitBtn.disabled = false;
             } else {
                 status.textContent = 'Disconnected';
                 status.className = 'status disconnected';
                 connectBtn.disabled = false;
                 disconnectBtn.disabled = true;
+                submitBtn.disabled = true;
             }
         }
 
-        /*
-         * ============================================================
-         * KEY LEARNING POINT: How the frontend connects to your backend
-         * ============================================================
-         *
-         * Step 1: Create a SockJS connection to your endpoint
-         *         - This matches: registry.addEndpoint("/ws-electricity") in WebSocketConfig.java
-         *
-         * Step 2: Create a STOMP client over that connection
-         *         - STOMP provides the pub/sub messaging pattern
-         *
-         * Step 3: Connect and subscribe to topics
-         *         - Subscribe to "/topic/prices" to receive broadcasts
-         *         - This matches: messagingTemplate.convertAndSend("/topic/prices", ...) in PriceService.java
-         */
+        // ============================================
+        // CONNECT: Include JWT token in WebSocket URL
+        // ============================================
         function connect() {
-            log('Attempting to connect...');
+            if (!jwtToken) {
+                log('Please login first', true);
+                return;
+            }
 
-            // Step 1: Create SockJS connection to your Spring Boot endpoint
-            const socket = new SockJS('/ws-electricity');
+            log('Connecting with JWT token...');
 
-            // Step 2: Create STOMP client over the WebSocket connection
+            // Pass JWT token as query parameter
+            // JwtHandshakeInterceptor will extract and validate it
+            const socket = new SockJS('/ws-electricity?token=' + jwtToken);
             stompClient = Stomp.over(socket);
-
-            // Optional: Disable debug logging (comment out to see STOMP frames)
             stompClient.debug = null;
 
-            // Step 3: Connect to the server
             stompClient.connect({}, function(frame) {
-                // Connection successful
                 log('Connected to WebSocket server');
                 setConnected(true);
 
-                // Step 4: Subscribe to the /topic/prices topic
-                // This receives messages sent via: messagingTemplate.convertAndSend("/topic/prices", ...)
+                // Subscribe to price updates (broadcast to all)
                 stompClient.subscribe('/topic/prices', function(message) {
-                    // Parse the JSON message body (your ElectricityPrice record)
                     const price = JSON.parse(message.body);
                     onPriceReceived(price);
                 });
-
                 log('Subscribed to /topic/prices');
 
+                // Subscribe to personal order confirmations
+                // Server uses convertAndSendToUser(username, ...) which routes to /user/queue/...
+                stompClient.subscribe('/user/queue/order-confirmation', function(message) {
+                    const confirmation = JSON.parse(message.body);
+                    onConfirmationReceived(confirmation);
+                });
+                log('Subscribed to /user/queue/order-confirmation');
+
+                // Subscribe to personal error messages
+                stompClient.subscribe('/user/queue/errors', function(message) {
+                    log('Error: ' + message.body, true);
+                });
+                log('Subscribed to /user/queue/errors');
+
             }, function(error) {
-                // Connection error
-                log('Connection error: ' + error);
+                log('Connection error: ' + error, true);
                 setConnected(false);
             });
         }
@@ -149,18 +316,84 @@
             setConnected(false);
         }
 
-        function onPriceReceived(price) {
-            // Store the price data
-            priceData[price.region] = price;
+        function submitOrder(event) {
+            event.preventDefault();
 
-            // Log it
-            log(`${price.region}: ${price.price} NGN (${price.changePercent >= 0 ? '+' : ''}${price.changePercent.toFixed(2)}%)`);
+            if (!stompClient || !stompClient.connected) {
+                log('Cannot submit order: not connected', true);
+                return;
+            }
 
-            // Update the table
-            updateTable();
+            const order = {
+                orderId: 'ORD-' + Date.now() + '-' + (orderCounter++),
+                region: document.getElementById('orderRegion').value,
+                type: document.getElementById('orderType').value,
+                quantity: parseInt(document.getElementById('orderQuantity').value),
+                price: parseFloat(document.getElementById('orderPrice').value),
+                submittedAt: new Date().toISOString()
+            };
+
+            // Store order locally for correlation when confirmation arrives
+            pendingOrders.set(order.orderId, order);
+
+            // Send order to server via WebSocket
+            stompClient.send('/app/order', {}, JSON.stringify(order));
+            log(`Order submitted: ${order.type} ${order.quantity} MWh @ ${order.price} NGN (${order.region})`);
         }
 
-        function updateTable() {
+        function onPriceReceived(price) {
+            priceData[price.region] = price;
+            updatePriceTable();
+        }
+
+        function onConfirmationReceived(confirmation) {
+            // Look up original order from local store
+            const order = pendingOrders.get(confirmation.orderId);
+
+            log(`Order ${confirmation.orderId}: ${confirmation.status}`);
+
+            const container = document.getElementById('confirmations');
+
+            // Remove "no confirmations" message if present
+            const noConfirm = container.querySelector('.no-confirmations');
+            if (noConfirm) noConfirm.remove();
+
+            const div = document.createElement('div');
+            div.className = 'confirmation ' + confirmation.status;
+
+            // Build confirmation display with order details from local store
+            let orderDetails = '';
+            if (order) {
+                orderDetails = `
+                    <span style="color:#888;">${order.type}</span>
+                    <strong>${order.quantity} MWh</strong> @
+                    <strong>${order.price.toFixed(2)} NGN</strong>
+                    <span style="color:#888;">(${order.region})</span><br>
+                `;
+            }
+
+            div.innerHTML = `
+                <strong>Order ${confirmation.orderId}</strong><br>
+                ${orderDetails}
+                Status: <strong>${confirmation.status}</strong><br>
+                ${confirmation.message || ''}
+                <div class="confirmation-time">${new Date(confirmation.confirmedAt).toLocaleString()}</div>
+            `;
+
+            container.insertBefore(div, container.firstChild);
+
+            // Remove from pending orders after confirmation (order is now processed)
+            if (order) {
+                pendingOrders.delete(confirmation.orderId);
+            }
+
+            // Keep only last 5 confirmations
+            while (container.children.length > 5) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function updatePriceTable() {
             const tbody = document.getElementById('priceTable');
             const regions = Object.keys(priceData).sort();
 
