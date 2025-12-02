@@ -15,6 +15,7 @@ This repository serves as a hands-on learning project to understand WebSocket/ST
 - **User-specific Messages** - Private messages sent only to the originating user (`/user/queue/order-confirmation`)
 - **JWT Authentication** - Secure WebSocket connections with token-based auth
 - **Error Handling** - Graceful error propagation to clients (`/user/queue/errors`)
+- **Heartbeat** - Connection health monitoring with 10-second intervals
 
 > **Note:** This demo sends orders via WebSocket for learning purposes. In production, orders should be submitted via REST for reliability, while WebSocket handles real-time updates (prices, trade confirmations, order status changes).
 
@@ -71,13 +72,7 @@ See [docs/LEARNING_ROADMAP.md](docs/LEARNING_ROADMAP.md) for the complete learni
 - [x] User-specific messages (queues)
 - [x] Error handling
 - [x] JWT Authentication
-
-### In Progress
-- [ ] Heartbeat & Connection Management
-- [ ] Message Acknowledgment
-- [ ] Scaling with External Message Broker
-- [ ] Testing WebSockets
-- [ ] Production Considerations
+- [x] Heartbeat & Connection Management
 
 ## Why WebSocket over Polling?
 
