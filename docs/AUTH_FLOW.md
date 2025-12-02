@@ -101,10 +101,15 @@ SecurityConfig acts as the GATEKEEPER at the HTTP level:
 ┌─────────────────────────────────────────────────────────┐
 │                    SecurityConfig                       │
 │                                                         │
-│  /api/auth/** ──────> PERMIT (no auth needed)           │
-│  /ws/**       ──────> PERMIT (auth via JWT in query)    │
-│  /ws-electricity/** ─> PERMIT (auth via JWT in query)   │
-│  everything else ───> REQUIRES AUTHENTICATION           │
+│  /                ──> PERMIT (landing page)             │
+│  /index.html      ──> PERMIT (main app)                 │
+│  /css/**          ──> PERMIT (stylesheets)              │
+│  /js/**           ──> PERMIT (scripts)                  │
+│  /api/auth/**     ──> PERMIT (login endpoint)           │
+│  /ws/**           ──> PERMIT (auth via JWT in query)    │
+│  /ws-electricity/**─> PERMIT (auth via JWT in query)    │
+│  /ws-plain/**     ──> PERMIT (plain WebSocket)          │
+│  everything else  ──> REQUIRES AUTHENTICATION           │
 │                                                         │
 │  + CSRF disabled (not needed for JWT)                   │
 │  + Stateless sessions (JWT is self-contained)           │

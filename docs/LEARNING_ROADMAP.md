@@ -27,33 +27,32 @@ A structured guide for learning WebSocket with Spring Boot for electricity tradi
 - [x] `UserInterceptor` - Sets Principal for Spring
 - [x] `SecurityConfig` - HTTP security configuration
 
+### Part 5: Heartbeat & Connection Management
+- [x] STOMP heartbeats (10s server, 10s client)
+- [x] Dedicated heartbeat thread pool
+- [x] Client-side auto-reconnection with exponential backoff
+- [x] Connection state UI feedback (connected/reconnecting/disconnected)
+
+### Part 6: Testing
+- [x] Unit tests for `JwtService`
+- [x] WebSocket integration tests with `WebSocketStompClient`
+- [x] Authentication flow testing
+
 ---
 
 ## Upcoming Topics
 
-### Part 5: Heartbeat & Connection Management
-- Configure STOMP heartbeats to detect dead connections
-- Handle connection timeouts gracefully
-- Server-side connection tracking
-- Implement reconnection strategies
-
-### Part 6: Message Acknowledgment (ACKs)
+### Part 7: Message Acknowledgment (ACKs)
 - Client acknowledgment modes (auto vs manual)
 - Ensuring message delivery
 - Retry mechanisms for failed deliveries
 - Idempotency for duplicate messages
 
-### Part 7: Scaling with External Message Broker
+### Part 8: Scaling with External Message Broker
 - Replace simple broker with RabbitMQ or Redis
 - Handle multiple server instances
 - Pub/sub across nodes
 - Message persistence
-
-### Part 8: Testing WebSockets
-- Unit testing controllers with `@WebMvcTest`
-- Integration testing with `WebSocketStompClient`
-- Testing authentication flow
-- Mocking message templates
 
 ### Part 9: Production Considerations
 - Rate limiting to prevent abuse
@@ -68,7 +67,7 @@ A structured guide for learning WebSocket with Spring Boot for electricity tradi
 ## Project Structure
 
 ```
-electricity-price-monitor/
+electricity-trading-websocket/
 ├── src/main/java/com/trading/priceMonitor/
 │   ├── config/
 │   │   ├── WebSocketConfig.java
@@ -85,12 +84,22 @@ electricity-price-monitor/
 │   ├── security/
 │   │   ├── JwtService.java
 │   │   ├── JwtHandshakeInterceptor.java
-│   │   └── UserInterceptor.java
+│   │   ├── UserInterceptor.java
+│   │   └── StompPrincipal.java
 │   └── service/
 │       └── PriceService.java
 ├── src/main/resources/
 │   └── static/
-│       └── index.html
+│       ├── index.html
+│       ├── css/
+│       │   └── style.css
+│       └── js/
+│           └── app.js
+├── src/test/java/
+│   └── com/trading/priceMonitor/
+│       ├── security/
+│       │   └── JwtServiceTest.java
+│       └── WebSocketIntegrationTest.java
 └── docs/
     ├── AUTH_FLOW.md
     └── LEARNING_ROADMAP.md
@@ -109,3 +118,4 @@ electricity-price-monitor/
 | **Principal** | Represents the authenticated user |
 | **Handshake Interceptor** | Runs during WebSocket upgrade |
 | **Channel Interceptor** | Runs on every STOMP message |
+| **Exponential Backoff** | Reconnection strategy: 1s, 2s, 4s, 8s, 16s delays |

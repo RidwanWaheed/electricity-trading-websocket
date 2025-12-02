@@ -15,6 +15,7 @@ This repository serves as a hands-on learning project to understand WebSocket/ST
 - **User-specific Messages** - Private messages sent only to the originating user (`/user/queue/order-confirmation`)
 - **JWT Authentication** - Secure WebSocket connections with token-based auth
 - **Client-side Order Tracking** - Correlates confirmations with original orders by orderId (no data duplication over the wire)
+- **Auto-reconnection** - Exponential backoff reconnection (1s, 2s, 4s...) with max 5 attempts
 - **Error Handling** - Graceful error propagation to clients (`/user/queue/errors`)
 - **Heartbeat** - Connection health monitoring with 10-second intervals
 
