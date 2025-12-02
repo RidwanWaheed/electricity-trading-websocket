@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electricity Price Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
+        h1 { text-align: center; margin-bottom: 20px; color: #00d4ff; }
+        .status { text-align: center; margin-bottom: 20px; padding: 10px; border-radius: 8px; }
+        .status.connected { background: #0f5132; color: #75b798; }
+        .status.disconnected { background: #842029; color: #ea868f; }
+        .controls { text-align: center; margin-bottom: 20px; }
+        button { padding: 10px 24px; margin: 0 10px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        button.connect { background: #00d4ff; color: #1a1a2e; }
+        button.disconnect { background: #ff4757; color: white; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        table { width: 100%; max-width: 900px; margin: 0 auto; border-collapse: collapse; background: #16213e; border-radius: 12px; overflow: hidden; }
+        th, td { padding: 16px; text-align: left; }
+        th { background: #0f3460; color: #00d4ff; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        tr:not(:last-child) td { border-bottom: 1px solid #0f3460; }
+        .price { font-weight: 700; font-size: 18px; }
+        .positive { color: #00ff88; }
+        .negative { color: #ff4757; }
+        .neutral { color: #aaa; }
+        .timestamp { color: #888; font-size: 12px; }
+        .log { max-width: 900px; margin: 30px auto; background: #16213e; border-radius: 12px; padding: 16px; max-height: 200px; overflow-y: auto; }
+        .log h3 { color: #00d4ff; margin-bottom: 10px; font-size: 14px; }
+        .log-entry { font-family: monospace; font-size: 12px; color: #888; margin: 4px 0; }
+    </style>
+</head>
+<body>
+    <h1>Real-Time Electricity Prices</h1>
+
+    <div id="status" class="status disconnected">Disconnected</div>
+
+    <div class="controls">
+        <button id="connectBtn" class="connect" onclick="connect()">Connect</button>
+        <button id="disconnectBtn" class="disconnect" onclick="disconnect()" disabled>Disconnect</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Region</th>
+                <th>Price (NGN/MWh)</th>
+                <th>Change</th>
+                <th>Last Updated</th>
+            </tr>
+        </thead>
+        <tbody id="priceTable">
+            <tr><td colspan="4" style="text-align:center; color:#888;">Connect to see live prices</td></tr>
+        </tbody>
+    </table>
+
+    <div class="log">
+        <h3>Connection Log</h3>
+        <div id="logEntries"></div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        const priceData = {}; // Store prices by region
+
+        function log(message) {
+            const logDiv = document.getElementById('logEntries');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.insertBefore(entry, logDiv.firstChild);
+        }
+
+        function setConnected(connected) {
+            const status = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+
+            if (connected) {
+                status.textContent = 'Connected';
+                status.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                status.textContent = 'Disconnected';
+                status.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        /*
+         * ============================================================
+         * KEY LEARNING POINT: How the frontend connects to your backend
+         * ============================================================
+         *
+         * Step 1: Create a SockJS connection to your endpoint
+         *         - This matches: registry.addEndpoint("/ws-electricity") in WebSocketConfig.java
+         *
+         * Step 2: Create a STOMP client over that connection
+         *         - STOMP provides the pub/sub messaging pattern
+         *
+         * Step 3: Connect and subscribe to topics
+         *         - Subscribe to "/topic/prices" to receive broadcasts
+         *         - This matches: messagingTemplate.convertAndSend("/topic/prices", ...) in PriceService.java
+         */
+        function connect() {
+            log('Attempting to connect...');
+
+            // Step 1: Create SockJS connection to your Spring Boot endpoint
+            const socket = new SockJS('/ws-electricity');
+
+            // Step 2: Create STOMP client over the WebSocket connection
+            stompClient = Stomp.over(socket);
+
+            // Optional: Disable debug logging (comment out to see STOMP frames)
+            stompClient.debug = null;
+
+            // Step 3: Connect to the server
+            stompClient.connect({}, function(frame) {
+                // Connection successful
+                log('Connected to WebSocket server');
+                setConnected(true);
+
+                // Step 4: Subscribe to the /topic/prices topic
+                // This receives messages sent via: messagingTemplate.convertAndSend("/topic/prices", ...)
+                stompClient.subscribe('/topic/prices', function(message) {
+                    // Parse the JSON message body (your ElectricityPrice record)
+                    const price = JSON.parse(message.body);
+                    onPriceReceived(price);
+                });
+
+                log('Subscribed to /topic/prices');
+
+            }, function(error) {
+                // Connection error
+                log('Connection error: ' + error);
+                setConnected(false);
+            });
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+                log('Disconnected');
+            }
+            setConnected(false);
+        }
+
+        function onPriceReceived(price) {
+            // Store the price data
+            priceData[price.region] = price;
+
+            // Log it
+            log(`${price.region}: ${price.price} NGN (${price.changePercent >= 0 ? '+' : ''}${price.changePercent.toFixed(2)}%)`);
+
+            // Update the table
+            updateTable();
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('priceTable');
+            const regions = Object.keys(priceData).sort();
+
+            if (regions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#888;">Waiting for data...</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = regions.map(region => {
+                const p = priceData[region];
+                const changeClass = p.changePercent > 0 ? 'positive' : p.changePercent < 0 ? 'negative' : 'neutral';
+                const changePrefix = p.changePercent > 0 ? '+' : '';
+                const time = new Date(p.timestamp).toLocaleTimeString();
+
+                return `
+                    <tr>
+                        <td><strong>${p.region}</strong><br><span class="timestamp">${p.area}</span></td>
+                        <td class="price">${p.price.toFixed(2)}</td>
+                        <td class="${changeClass}">${changePrefix}${p.changePercent.toFixed(2)}%</td>
+                        <td class="timestamp">${time}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>
