@@ -20,6 +20,8 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/").permitAll()
                     .requestMatchers("/index.html").permitAll()
+                    .requestMatchers("/css/**").permitAll()
+                    .requestMatchers("/js/**").permitAll()
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/ws/**").permitAll()
                     .requestMatchers("/ws-electricity/**").permitAll()
