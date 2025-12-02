@@ -149,12 +149,32 @@ h1, h2, h3, h4 {
     box-shadow: 0 0 8px var(--accent-success);
 }
 
+.status-badge--reconnecting .status-badge__dot {
+    background-color: var(--accent-warning);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 4px var(--accent-warning);
+    }
+    50% {
+        opacity: 0.5;
+        box-shadow: 0 0 12px var(--accent-warning);
+    }
+}
+
 .status-badge__text {
     color: var(--text-secondary);
 }
 
 .status-badge--connected .status-badge__text {
     color: var(--text-primary);
+}
+
+.status-badge--reconnecting .status-badge__text {
+    color: var(--accent-warning);
 }
 
 /* Button Group */

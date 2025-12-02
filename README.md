@@ -75,6 +75,7 @@ See [docs/LEARNING_ROADMAP.md](docs/LEARNING_ROADMAP.md) for the complete learni
 - [x] JWT Authentication
 - [x] Heartbeat & Connection Management
 - [x] Client-side Order Tracking (orderId correlation)
+- [x] Auto-reconnection with exponential backoff
 
 ## Why WebSocket over Polling?
 

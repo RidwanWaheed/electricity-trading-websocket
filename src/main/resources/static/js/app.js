@@ -16,6 +16,22 @@ let orderCounter = 1;
 const pendingOrders = new Map();
 
 // ============================================
+// Reconnection Configuration
+// ============================================
+const reconnectConfig = {
+    maxAttempts: 5,
+    baseDelay: 1000,      // 1 second
+    maxDelay: 30000,      // 30 seconds
+    multiplier: 2         // Exponential backoff multiplier
+};
+
+let reconnectState = {
+    attempts: 0,
+    timeoutId: null,
+    isManualDisconnect: false
+};
+
+// ============================================
 // Toast Notification System
 // ============================================
 function showToast(title, message, type = 'info') {
@@ -123,6 +139,10 @@ async function login(event) {
 }
 
 function logout() {
+    // Cancel any pending reconnection attempts
+    reconnectState.isManualDisconnect = true;
+    cancelReconnect();
+
     disconnect();
     jwtToken = null;
     currentUsername = null;
@@ -136,26 +156,63 @@ function logout() {
 // ============================================
 // Connection State Management
 // ============================================
-function setConnected(connected) {
+const ConnectionState = {
+    DISCONNECTED: 'disconnected',
+    CONNECTING: 'connecting',
+    CONNECTED: 'connected',
+    RECONNECTING: 'reconnecting'
+};
+
+function setConnectionState(state, message = null) {
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
     const connectBtn = document.getElementById('connectBtn');
     const disconnectBtn = document.getElementById('disconnectBtn');
     const submitBtn = document.getElementById('submitBtn');
 
-    if (connected) {
-        statusBadge.classList.add('status-badge--connected');
-        statusText.textContent = `Connected as ${currentUsername}`;
-        connectBtn.disabled = true;
-        disconnectBtn.disabled = false;
-        submitBtn.disabled = false;
-    } else {
-        statusBadge.classList.remove('status-badge--connected');
-        statusText.textContent = 'Disconnected';
-        connectBtn.disabled = false;
-        disconnectBtn.disabled = true;
-        submitBtn.disabled = true;
+    // Remove all state classes
+    statusBadge.classList.remove(
+        'status-badge--connected',
+        'status-badge--reconnecting'
+    );
+
+    switch (state) {
+        case ConnectionState.CONNECTED:
+            statusBadge.classList.add('status-badge--connected');
+            statusText.textContent = message || `Connected as ${currentUsername}`;
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+            submitBtn.disabled = false;
+            break;
+
+        case ConnectionState.RECONNECTING:
+            statusBadge.classList.add('status-badge--reconnecting');
+            statusText.textContent = message || 'Reconnecting...';
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+            submitBtn.disabled = true;
+            break;
+
+        case ConnectionState.CONNECTING:
+            statusText.textContent = message || 'Connecting...';
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = true;
+            submitBtn.disabled = true;
+            break;
+
+        case ConnectionState.DISCONNECTED:
+        default:
+            statusText.textContent = message || 'Disconnected';
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            submitBtn.disabled = true;
+            break;
     }
+}
+
+// Legacy function for backwards compatibility
+function setConnected(connected) {
+    setConnectionState(connected ? ConnectionState.CONNECTED : ConnectionState.DISCONNECTED);
 }
 
 // ============================================
@@ -168,51 +225,137 @@ function connect() {
         return;
     }
 
-    log('Connecting to WebSocket server...');
+    // Reset reconnect state on manual connect
+    reconnectState.isManualDisconnect = false;
+    reconnectState.attempts = 0;
+    cancelReconnect();
+
+    doConnect();
+}
+
+function doConnect() {
+    const isReconnect = reconnectState.attempts > 0;
+
+    if (isReconnect) {
+        log(`Reconnection attempt ${reconnectState.attempts}/${reconnectConfig.maxAttempts}...`);
+        setConnectionState(ConnectionState.RECONNECTING,
+            `Reconnecting (${reconnectState.attempts}/${reconnectConfig.maxAttempts})...`);
+    } else {
+        log('Connecting to WebSocket server...');
+        setConnectionState(ConnectionState.CONNECTING);
+    }
 
     const socket = new SockJS('/ws-electricity?token=' + jwtToken);
     stompClient = Stomp.over(socket);
     stompClient.debug = null; // Disable STOMP debug logging
 
     stompClient.connect({}, function() {
-        log('Connected to WebSocket server', 'success');
-        showToast('Connected', 'Real-time data stream active', 'success');
-        setConnected(true);
+        // Success - reset reconnect state
+        reconnectState.attempts = 0;
 
-        // Subscribe to price updates (broadcast to all)
-        stompClient.subscribe('/topic/prices', function(message) {
-            const price = JSON.parse(message.body);
-            onPriceReceived(price);
-        });
-        log('Subscribed to /topic/prices');
+        if (isReconnect) {
+            log('Reconnected to WebSocket server', 'success');
+            showToast('Reconnected', 'Connection restored', 'success');
+        } else {
+            log('Connected to WebSocket server', 'success');
+            showToast('Connected', 'Real-time data stream active', 'success');
+        }
 
-        // Subscribe to personal order confirmations
-        stompClient.subscribe('/user/queue/order-confirmation', function(message) {
-            const confirmation = JSON.parse(message.body);
-            onConfirmationReceived(confirmation);
-        });
-        log('Subscribed to /user/queue/order-confirmation');
-
-        // Subscribe to personal error messages
-        stompClient.subscribe('/user/queue/errors', function(message) {
-            log('Server error: ' + message.body, 'error');
-            showToast('Server Error', message.body, 'error');
-        });
-        log('Subscribed to /user/queue/errors');
+        setConnectionState(ConnectionState.CONNECTED);
+        subscribeToTopics();
 
     }, function(error) {
         log('Connection error: ' + error, 'error');
-        showToast('Connection Failed', 'Unable to connect to server', 'error');
-        setConnected(false);
+        setConnectionState(ConnectionState.DISCONNECTED);
+        handleConnectionError();
     });
+
+    // Handle unexpected disconnection via SockJS close event
+    socket.onclose = function() {
+        if (!reconnectState.isManualDisconnect && jwtToken) {
+            handleConnectionError();
+        }
+    };
+}
+
+function subscribeToTopics() {
+    // Subscribe to price updates (broadcast to all)
+    stompClient.subscribe('/topic/prices', function(message) {
+        const price = JSON.parse(message.body);
+        onPriceReceived(price);
+    });
+    log('Subscribed to /topic/prices');
+
+    // Subscribe to personal order confirmations
+    stompClient.subscribe('/user/queue/order-confirmation', function(message) {
+        const confirmation = JSON.parse(message.body);
+        onConfirmationReceived(confirmation);
+    });
+    log('Subscribed to /user/queue/order-confirmation');
+
+    // Subscribe to personal error messages
+    stompClient.subscribe('/user/queue/errors', function(message) {
+        log('Server error: ' + message.body, 'error');
+        showToast('Server Error', message.body, 'error');
+    });
+    log('Subscribed to /user/queue/errors');
 }
 
 function disconnect() {
+    reconnectState.isManualDisconnect = true;
+    cancelReconnect();
+
     if (stompClient !== null) {
         stompClient.disconnect();
         log('Disconnected from server');
     }
-    setConnected(false);
+    setConnectionState(ConnectionState.DISCONNECTED);
+}
+
+// ============================================
+// Reconnection Logic
+// ============================================
+function handleConnectionError() {
+    // Don't reconnect if manually disconnected or logged out
+    if (reconnectState.isManualDisconnect || !jwtToken) {
+        return;
+    }
+
+    // Check if we've exceeded max attempts
+    if (reconnectState.attempts >= reconnectConfig.maxAttempts) {
+        log(`Max reconnection attempts (${reconnectConfig.maxAttempts}) reached. Giving up.`, 'error');
+        showToast('Connection Lost', 'Unable to reconnect. Please try manually.', 'error');
+        setConnectionState(ConnectionState.DISCONNECTED, 'Connection lost');
+        reconnectState.attempts = 0;
+        return;
+    }
+
+    reconnectState.attempts++;
+
+    // Calculate delay with exponential backoff
+    const delay = Math.min(
+        reconnectConfig.baseDelay * Math.pow(reconnectConfig.multiplier, reconnectState.attempts - 1),
+        reconnectConfig.maxDelay
+    );
+
+    log(`Connection lost. Reconnecting in ${delay / 1000}s...`);
+    setConnectionState(ConnectionState.RECONNECTING,
+        `Reconnecting in ${Math.round(delay / 1000)}s...`);
+
+    if (reconnectState.attempts === 1) {
+        showToast('Connection Lost', 'Attempting to reconnect...', 'warning');
+    }
+
+    reconnectState.timeoutId = setTimeout(() => {
+        doConnect();
+    }, delay);
+}
+
+function cancelReconnect() {
+    if (reconnectState.timeoutId) {
+        clearTimeout(reconnectState.timeoutId);
+        reconnectState.timeoutId = null;
+    }
 }
 
 // ============================================
