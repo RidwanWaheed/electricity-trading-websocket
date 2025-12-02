@@ -47,11 +47,18 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
   @Override
   public void registerStompEndpoints(StompEndpointRegistry registry) {
+    // SockJS endpoint for browsers
     registry
         .addEndpoint("/ws", "/ws-electricity")
         .addInterceptors(jwtHandshakeInterceptor)
         .setAllowedOriginPatterns("*")
         .withSockJS();
+
+    // Plain WebSocket endpoint (for testing and native clients)
+    registry
+        .addEndpoint("/ws-plain")
+        .addInterceptors(jwtHandshakeInterceptor)
+        .setAllowedOriginPatterns("*");
   }
 
   @Override

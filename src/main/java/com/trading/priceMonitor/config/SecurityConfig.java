@@ -24,6 +24,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/ws-electricity/**")
                     .permitAll()
+                    .requestMatchers("/ws-plain/**")
+                    .permitAll()
                     .anyRequest()
                     .authenticated());
     return http.build();
