@@ -1,0 +1,48 @@
+# =============================================================================
+# .dockerignore - Files excluded from Docker build context
+# =============================================================================
+# Similar to .gitignore, but for Docker. These files won't be sent to the
+# Docker daemon during build, making builds faster and images smaller.
+# =============================================================================
+
+# Build outputs (we build inside Docker, don't need local builds)
+target/
+*.jar
+*.class
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in runtime image)
+docs/
+*.md
+!README.md
+
+# Docker files (prevent recursive copying)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Environment files (may contain secrets)
+.env
+.env.local
+*.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test files (tests run separately, not in production image)
+src/test/
