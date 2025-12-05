@@ -1,12 +1,18 @@
 package com.trading.priceMonitor.messaging;
 
-import com.trading.priceMonitor.config.RabbitMQConfig;
-import com.trading.priceMonitor.dto.OrderMessage;
+import static com.trading.common.messaging.RabbitMQConstants.*;
+
+import com.trading.common.messaging.OrderSubmitMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
+/**
+ * Publishes order submission messages to RabbitMQ for Order Service to process.
+ *
+ * <p>Message flow: Gateway → orders.topic (order.submit) → Order Service
+ */
 @Component
 public class OrderPublisher {
 
@@ -18,13 +24,20 @@ public class OrderPublisher {
     this.rabbitTemplate = rabbitTemplate;
   }
 
-  public void publish(OrderMessage message) {
+  /**
+   * Publishes an order to the Order Service via RabbitMQ.
+   *
+   * @param message The order submission message with correlation ID
+   */
+  public void publish(OrderSubmitMessage message) {
     log.info(
-        "Publishing order to queue: orderId={}, user={}", message.orderId(), message.username());
+        "[corr-id={}] Publishing order to Order Service: orderId={}, user={}",
+        message.correlationId(),
+        message.orderId(),
+        message.username());
 
-    rabbitTemplate.convertAndSend(
-        RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_ROUTING_KEY, message);
+    rabbitTemplate.convertAndSend(ORDERS_EXCHANGE, ROUTING_ORDER_SUBMIT, message);
 
-    log.debug("Order published successfully: {}", message.orderId());
+    log.debug("[corr-id={}] Order published successfully", message.correlationId());
   }
 }

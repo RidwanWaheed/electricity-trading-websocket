@@ -1,9 +1,10 @@
 package com.trading.priceMonitor.model;
 
+import com.trading.common.OrderStatus;
 import java.time.Instant;
 
 public record OrderConfirmation(
-    String orderId, Status status, String message, Instant confirmedAt) {
+    String orderId, OrderStatus status, String message, Instant confirmedAt) {
 
   public OrderConfirmation {
     if (orderId == null || orderId.isBlank()) {

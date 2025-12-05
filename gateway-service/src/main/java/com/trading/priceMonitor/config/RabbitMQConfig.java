@@ -1,8 +1,9 @@
 package com.trading.priceMonitor.config;
 
+import static com.trading.common.messaging.RabbitMQConstants.*;
+
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
@@ -11,50 +12,48 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * RabbitMQ configuration for Gateway Service.
+ *
+ * <p>Gateway's role in the message flow:
+ *
+ * <ul>
+ *   <li>PUBLISHES to orders.topic with key "order.submit" → Order Service receives
+ *   <li>LISTENS on gateway.order-status queue for "order.status.*" → pushes to WebSocket
+ * </ul>
+ */
 @Configuration
 public class RabbitMQConfig {
 
-  public static final String ORDER_QUEUE = "trading.orders";
-  public static final String ORDER_EXCHANGE = "trading.exchange";
-  public static final String ORDER_ROUTING_KEY = "order.created";
-
-  public static final String DLQ_QUEUE = "trading.orders.dlq";
-  public static final String DLQ_EXCHANGE = "trading.dlx";
-  public static final String DLQ_ROUTING_KEY = "order.failed";
-
-  // Failed messages are automatically routed to the DLQ via x-dead-letter-* args
-  @Bean
-  public Queue orderQueue() {
-    return QueueBuilder.durable(ORDER_QUEUE)
-        .withArgument("x-dead-letter-exchange", DLQ_EXCHANGE)
-        .withArgument("x-dead-letter-routing-key", DLQ_ROUTING_KEY)
-        .build();
-  }
+  // ===== EXCHANGES =====
+  // Gateway publishes to orders.topic exchange
 
   @Bean
-  public TopicExchange orderExchange() {
-    return new TopicExchange(ORDER_EXCHANGE);
+  public TopicExchange ordersExchange() {
+    return new TopicExchange(ORDERS_EXCHANGE);
   }
 
-  @Bean
-  public Binding orderBinding(Queue orderQueue, TopicExchange orderExchange) {
-    return BindingBuilder.bind(orderQueue).to(orderExchange).with(ORDER_ROUTING_KEY);
-  }
+  // ===== QUEUES =====
+  // Gateway listens on this queue for order status updates from Order Service
 
   @Bean
-  public Queue deadLetterQueue() {
-    return QueueBuilder.durable(DLQ_QUEUE).build();
+  public Queue orderStatusQueue() {
+    return QueueBuilder.durable(QUEUE_ORDER_STATUS).build();
   }
 
-  @Bean
-  public DirectExchange deadLetterExchange() {
-    return new DirectExchange(DLQ_EXCHANGE);
-  }
+  // ===== BINDINGS =====
+  // Bind queue to exchange with wildcard pattern to receive all status updates
 
   @Bean
-  public Binding dlqBinding(Queue deadLetterQueue, DirectExchange deadLetterExchange) {
-    return BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange).with(DLQ_ROUTING_KEY);
+  public Binding orderStatusBinding(Queue orderStatusQueue, TopicExchange ordersExchange) {
+    // order.status.* matches order.status.john, order.status.jane, etc.
+    return BindingBuilder.bind(orderStatusQueue)
+        .to(ordersExchange)
+        .with(ROUTING_ORDER_STATUS_WILDCARD);
   }
+
+  // ===== MESSAGE CONVERTER =====
+  // Use JSON for message serialization
 
   @Bean
   public MessageConverter jsonMessageConverter() {
