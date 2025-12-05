@@ -56,14 +56,14 @@ spring:
   # ---------------------------------------------------------------------------
   # RabbitMQ Configuration (Local Development)
   # ---------------------------------------------------------------------------
-  # WHY autoconfigure.exclude?
-  #   - Without RabbitMQ running locally, the app would fail to start
-  #   - This disables RabbitMQ auto-configuration for local development
-  #   - In Docker, we remove this exclusion and provide real connection details
+  # Connects to RabbitMQ running in Docker (docker-compose up -d rabbitmq)
+  # Default credentials: guest/guest (only works from localhost)
   # ---------------------------------------------------------------------------
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
 
 # ---------------------------------------------------------------------------
 # Actuator Configuration
