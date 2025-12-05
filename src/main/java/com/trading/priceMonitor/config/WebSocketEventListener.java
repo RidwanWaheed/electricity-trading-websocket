@@ -9,15 +9,16 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 @Component
 public class WebSocketEventListener {
 
-    private static final org.slf4j.Logger logger = LoggerFactory.getLogger(WebSocketEventListener.class);
-    
-    @EventListener
-    public void handleWebSocketConnectListener(SessionConnectedEvent event) {
-        logger.info("New WebSocket connection established");
-    }
+  private static final org.slf4j.Logger logger =
+      LoggerFactory.getLogger(WebSocketEventListener.class);
 
-    @EventListener
-    public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
-        logger.info("WebSocket connection closedd");
-    }
+  @EventListener
+  public void handleWebSocketConnectListener(SessionConnectedEvent event) {
+    logger.info("New WebSocket connection established");
+  }
+
+  @EventListener
+  public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
+    logger.info("WebSocket connection closedd");
+  }
 }

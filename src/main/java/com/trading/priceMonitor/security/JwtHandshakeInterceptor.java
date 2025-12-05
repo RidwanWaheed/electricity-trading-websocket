@@ -38,12 +38,12 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
     return true;
   }
 
-    @Override
-    public void afterHandshake(
-        ServerHttpRequest request,
-        ServerHttpResponse response,
-        WebSocketHandler wsHandler,
-        Exception exception) {
-        // No implementation needed for afterHandshake in this interceptor
-    }
+  @Override
+  public void afterHandshake(
+      ServerHttpRequest request,
+      ServerHttpResponse response,
+      WebSocketHandler wsHandler,
+      Exception exception) {
+    // No implementation needed for afterHandshake in this interceptor
+  }
 }

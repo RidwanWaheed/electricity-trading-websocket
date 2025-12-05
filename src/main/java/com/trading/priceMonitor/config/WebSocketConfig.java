@@ -1,5 +1,7 @@
 package com.trading.priceMonitor.config;
 
+import com.trading.priceMonitor.security.JwtHandshakeInterceptor;
+import com.trading.priceMonitor.security.UserInterceptor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -9,9 +11,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
-
-import com.trading.priceMonitor.security.JwtHandshakeInterceptor;
-import com.trading.priceMonitor.security.UserInterceptor;
 
 @Configuration
 @EnableWebSocketMessageBroker

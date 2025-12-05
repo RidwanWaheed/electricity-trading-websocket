@@ -3,11 +3,7 @@ package com.trading.priceMonitor.model;
 import java.math.BigDecimal;
 
 public record Order(
-    String orderId,
-    String region,
-    BigDecimal price,
-    String type,
-    BigDecimal quantity) {
+    String orderId, String region, BigDecimal price, String type, BigDecimal quantity) {
   public Order {
     if (orderId == null || orderId.isBlank()) {
       throw new IllegalArgumentException("Order ID cannot be null or blank");
