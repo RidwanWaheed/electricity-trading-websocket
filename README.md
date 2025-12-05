@@ -8,7 +8,7 @@ A practice project for implementing real-time WebSocket communication, built as 
 
 Our main project is an electricity trading platform currently in **alpha phase**. Initially, we implemented polling to stream live market data to the frontend with plans to "defer WebSocket for later." We quickly realized this approach would accumulate significant technical debt—polling doesn't scale well for real-time trading where milliseconds matter.
 
-This repository serves as a hands-on learning project to understand WebSocket/STOMP patterns before integrating them into the production trading platform.
+This repository serves as a hands-on learning project to understand WebSocket/STOMP patterns before integrating them into the production trading platform. It evolved into a microservices architecture as an opportunity to learn RabbitMQ-based service communication.
 
 ## Tech Stack
 
@@ -21,57 +21,47 @@ This repository serves as a hands-on learning project to understand WebSocket/ST
 ## Architecture
 
 ```
-┌─────────────┐       WebSocket/STOMP        ┌─────────────────────────────────────┐
-│   Browser   │◄────────────────────────────►│           Spring Boot               │
-│             │    • /topic/prices           │                                     │
-│  - SockJS   │    • /user/queue/orders      │  ┌──────────┐    ┌───────────────┐  │
-│  - STOMP    │    • /app/order              │  │ WebSocket│    │ Order Service │  │
-└─────────────┘                              │  │ Handler  │───►│               │  │
-                                             │  └──────────┘    └──────┬────────┘  │
-      │                                      │                         │           │
-      │ REST API                             │  ┌─────────┐            │           │
-      │ • /api/auth/*                        │  │  Price  │            │           │
-      └─────────────────────────────────────►│  │ Service │            │           │
-                                             │  └────┬────┘            │           │
-                                             └───────┼─────────────────│───────────┘
-                                                     │                 │
-                                         publish     │                 │ consume/publish
-                                                     ▼                 ▼
-                                             ┌─────────────────────────────┐
-                                             │         RabbitMQ            │
-                                             │  • trading.prices (fanout)  │
-                                             │  • trading.orders (direct)  │
-                                             └─────────────────────────────┘
-                                                            │
-                                                            │ persist
-                                                            ▼
-                                             ┌─────────────────────────────┐
-                                             │        PostgreSQL           │
-                                             │  • users, orders tables     │
-                                             └─────────────────────────────┘
+┌─────────┐    WebSocket    ┌─────────┐    RabbitMQ    ┌───────────────┐    RabbitMQ    ┌─────────┐
+│ Browser │◄───────────────►│ Gateway │◄──────────────►│ Order Service │◄──────────────►│ Mock M7 │
+└─────────┘                 └────┬────┘                └───────┬───────┘                └─────────┘
+                                 │                             │
+                                 │        ┌──────────┐         │
+                                 └───────►│ Postgres │◄────────┘
+                                          └──────────┘
 ```
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Gateway | 8080 | WebSocket, REST API, JWT Authentication |
+| Order Service | 8081 | Order processing, state machine, persistence |
+| Mock M7 | 8082 | Simulates EPEX SPOT trading engine, price generation |
+| RabbitMQ | 5672 | Message broker (Management UI: 15672) |
+| PostgreSQL | 5432 | Database (users, orders) |
 
 ## Features
 
-- **Real-time Price Broadcasting** - Server pushes electricity prices to all connected clients
+- **Real-time Price Broadcasting** - Mock M7 generates prices, broadcast via WebSocket
 - **WebSocket + STOMP** - Bi-directional messaging with topic subscriptions
-- **User-specific Messages** - Private order confirmations per user session
+- **Order Lifecycle** - Full state machine: PENDING → SUBMITTED → FILLED/REJECTED
+- **Microservices** - Gateway, Order Service, Mock M7 communicate via RabbitMQ
 - **JWT Authentication** - Secure WebSocket connections with token-based auth
 - **Auto-reconnection** - Exponential backoff (1s, 2s, 4s...) with max 5 attempts
-- **Message Queuing** - RabbitMQ for order processing pipeline
+- **Idempotent Messaging** - Handles duplicate/out-of-order messages gracefully
 
 ## Quick Start
 
 ```bash
-make up      # Start full Docker stack
+make up      # Start full Docker stack (all 5 services)
 ```
 
-The application starts on `http://localhost:8080`
+Open `http://localhost:8080` in your browser.
 
 ### Local Development
 ```bash
-make deps    # Start PostgreSQL + RabbitMQ
-make run     # Run the app
+make deps         # Start PostgreSQL + RabbitMQ only
+make run-gateway  # Run Gateway in terminal 1
+make run-order    # Run Order Service in terminal 2
+make run-m7       # Run Mock M7 in terminal 3
 ```
 
 ## Make Commands
@@ -81,11 +71,15 @@ make run     # Run the app
 | `make up` | Start full Docker stack |
 | `make down` | Stop all containers |
 | `make deps` | Start only postgres + rabbitmq |
-| `make run` | Run app locally |
+| `make rebuild` | Rebuild and restart app containers |
+| `make run-gateway` | Run Gateway locally |
+| `make run-order` | Run Order Service locally |
+| `make run-m7` | Run Mock M7 locally |
 | `make test` | Run unit tests |
 | `make fmt` | Auto-format code |
-| `make build` | Build JAR |
-| `make logs` | Tail app container logs |
+| `make build` | Build all modules |
+| `make logs` | Tail all service logs |
+| `make health` | Check health of all services |
 
 ## API Endpoints
 
@@ -105,6 +99,31 @@ make run     # Run the app
 | `/app/order` | Client → Server | Submit order |
 | `/user/queue/order-confirmation` | Server → Client | Receive order confirmations |
 | `/user/queue/errors` | Server → Client | Receive error messages |
+
+## Order Lifecycle
+
+```
+Browser          Gateway          Order Service       Mock M7
+   │                │                   │                │
+   │  Submit Order  │                   │                │
+   ├───────────────►│                   │                │
+   │                │  order.submit     │                │
+   │                ├──────────────────►│                │
+   │                │                   │  m7.order      │
+   │                │                   ├───────────────►│
+   │                │                   │                │
+   │                │                   │  m7.ack        │ (immediate)
+   │                │   order.status    │◄───────────────┤
+   │  SUBMITTED     │◄──────────────────┤                │
+   │◄───────────────┤                   │                │
+   │                │                   │                │
+   │                │                   │  m7.fill       │ (after ~1s)
+   │                │   order.status    │◄───────────────┤
+   │  FILLED        │◄──────────────────┤                │
+   │◄───────────────┤                   │                │
+```
+
+**States:** `PENDING` → `SUBMITTED` → `FILLED` | `REJECTED`
 
 ## CI/CD
 
