@@ -1,0 +1,101 @@
+# =============================================================================
+# Default Configuration (Local Development)
+# =============================================================================
+# This file is loaded by default when running: ./mvnw spring-boot:run
+# For Docker, application-docker.yml overrides these values.
+# =============================================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: electricity-trading-websocket
+
+  # ---------------------------------------------------------------------------
+  # Database Configuration (Local Development)
+  # ---------------------------------------------------------------------------
+  # WHY H2 for local dev?
+  #   - No need to install PostgreSQL locally
+  #   - In-memory = fresh database every restart (good for dev)
+  #   - H2 console at http://localhost:8080/h2-console for debugging
+  #
+  # In Docker, application-docker.yml overrides this with PostgreSQL.
+  # ---------------------------------------------------------------------------
+  datasource:
+    url: jdbc:h2:mem:tradingdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # H2 Console - Web UI to inspect your in-memory database
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # ---------------------------------------------------------------------------
+  # JPA / Hibernate Configuration
+  # ---------------------------------------------------------------------------
+  # WHY these settings?
+  #   - ddl-auto: create-drop = Creates tables on startup, drops on shutdown
+  #     Perfect for development. In production, use 'validate' or 'none'.
+  #   - show-sql: true = See the SQL Hibernate generates (learning!)
+  #   - format_sql: true = Pretty-print the SQL for readability
+  # ---------------------------------------------------------------------------
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    # For H2, use H2 dialect. Docker profile overrides with PostgreSQL dialect.
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ Configuration (Local Development)
+  # ---------------------------------------------------------------------------
+  # WHY autoconfigure.exclude?
+  #   - Without RabbitMQ running locally, the app would fail to start
+  #   - This disables RabbitMQ auto-configuration for local development
+  #   - In Docker, we remove this exclusion and provide real connection details
+  # ---------------------------------------------------------------------------
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+
+# ---------------------------------------------------------------------------
+# Actuator Configuration
+# ---------------------------------------------------------------------------
+# WHY expose these endpoints?
+#   - health: Docker HEALTHCHECK uses this
+#   - info: Useful metadata about your app
+#   - metrics: Performance data (requests/sec, memory, etc.)
+#
+# WHY show-details: always?
+#   - Health check shows database status, disk space, etc.
+#   - In production, use 'when_authorized' for security
+# ---------------------------------------------------------------------------
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ---------------------------------------------------------------------------
+# Logging Configuration
+# ---------------------------------------------------------------------------
+# WHY these log levels?
+#   - DEBUG for our code = see what's happening
+#   - WARN for Spring/Hibernate = reduce noise
+#   - Adjust as needed during debugging
+# ---------------------------------------------------------------------------
+logging:
+  level:
+    com.trading: DEBUG
+    org.springframework.messaging: INFO
+    org.hibernate.SQL: DEBUG

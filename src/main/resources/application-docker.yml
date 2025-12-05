@@ -1,0 +1,87 @@
+# =============================================================================
+# Docker Profile Configuration
+# =============================================================================
+# This file is loaded when: SPRING_PROFILES_ACTIVE=docker
+# It OVERRIDES values from application.yml - only differences are specified here.
+#
+# How Spring merges configs:
+#   1. Load application.yml (all defaults)
+#   2. Load application-docker.yml (overrides only)
+#   3. Docker config wins where there's overlap
+# =============================================================================
+
+spring:
+  # ---------------------------------------------------------------------------
+  # Database Configuration (PostgreSQL in Docker)
+  # ---------------------------------------------------------------------------
+  # WHY these values?
+  #   - 'postgres' is the service name in docker-compose.yml
+  #   - Docker's internal DNS resolves 'postgres' to the container's IP
+  #   - Port 5432 is PostgreSQL's default port
+  #
+  # These can be overridden by environment variables in docker-compose.yml:
+  #   SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, etc.
+  # ---------------------------------------------------------------------------
+  datasource:
+    url: jdbc:postgresql://postgres:5432/trading_db
+    driver-class-name: org.postgresql.Driver
+    username: trading
+    password: trading123
+
+  # Disable H2 console in Docker (we're using PostgreSQL)
+  h2:
+    console:
+      enabled: false
+
+  # ---------------------------------------------------------------------------
+  # JPA Configuration for PostgreSQL
+  # ---------------------------------------------------------------------------
+  # WHY ddl-auto: update?
+  #   - 'update': Hibernate updates schema without dropping data
+  #   - Better than 'create-drop' for Docker where you want data persistence
+  #   - In production, use 'validate' and manage schema with Flyway/Liquibase
+  #
+  # WHY PostgreSQLDialect?
+  #   - Tells Hibernate how to generate PostgreSQL-specific SQL
+  #   - Different databases have different SQL dialects (LIMIT vs TOP, etc.)
+  # ---------------------------------------------------------------------------
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    # Reduce SQL logging noise in Docker
+    show-sql: false
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ Configuration
+  # ---------------------------------------------------------------------------
+  # WHY these values?
+  #   - 'rabbitmq' is the service name in docker-compose.yml
+  #   - Port 5672 is AMQP protocol (not 15672 which is the management UI)
+  #   - guest/guest is RabbitMQ's default credentials
+  #
+  # IMPORTANT: Remove the autoconfigure.exclude from application.yml
+  # by setting it to empty here, so RabbitMQ auto-configuration kicks in.
+  # ---------------------------------------------------------------------------
+  autoconfigure:
+    exclude: []  # Clear the exclusion list - enable RabbitMQ
+
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
+
+# ---------------------------------------------------------------------------
+# Logging for Docker
+# ---------------------------------------------------------------------------
+# WHY reduce logging?
+#   - Container logs can get massive quickly
+#   - DEBUG is too verbose for long-running containers
+#   - INFO is sufficient for monitoring
+# ---------------------------------------------------------------------------
+logging:
+  level:
+    com.trading: INFO
+    org.springframework.amqp: INFO
+    org.hibernate.SQL: WARN
