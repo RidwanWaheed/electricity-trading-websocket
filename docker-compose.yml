@@ -1,31 +1,37 @@
 # =============================================================================
-# Docker Compose - Electricity Trading WebSocket Platform
+# Docker Compose - Electricity Trading Microservices
 # =============================================================================
-# See docs/DOCKER_GUIDE.md for detailed explanations of each section.
+# Services:
+#   - gateway:       WebSocket/REST API, Auth, Price generation (port 8080)
+#   - order-service: Order processing and persistence (port 8081)
+#   - mock-m7:       Trading engine simulation (port 8082)
+#   - rabbitmq:      Message broker (ports 5672, 15672)
+#   - postgres:      Database (port 5432)
 #
 # Quick start:
-#   docker-compose up -d        # Start all services
-#   docker-compose logs -f app  # View app logs
-#   docker-compose down         # Stop all services
+#   docker-compose up -d              # Start all services
+#   docker-compose logs -f gateway    # View gateway logs
+#   docker-compose down               # Stop all services
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
   # PostgreSQL Database
   # ---------------------------------------------------------------------------
+  # Stores users (Gateway) and orders (Order Service)
   postgres:
     image: postgres:16-alpine
     container_name: trading-postgres
     environment:
-      POSTGRES_DB: trading_db
+      POSTGRES_DB: trading
       POSTGRES_USER: trading
-      POSTGRES_PASSWORD: trading123
+      POSTGRES_PASSWORD: trading
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U trading -d trading_db"]
+      test: ["CMD-SHELL", "pg_isready -U trading -d trading"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,6 +41,8 @@ services:
   # ---------------------------------------------------------------------------
   # RabbitMQ Message Broker
   # ---------------------------------------------------------------------------
+  # Routes messages between services
+  # Management UI: http://localhost:15672 (guest/guest)
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: trading-rabbitmq
@@ -42,8 +50,8 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # Management UI
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -55,22 +63,21 @@ services:
       - trading-network
 
   # ---------------------------------------------------------------------------
-  # Spring Boot Application
+  # Gateway Service
   # ---------------------------------------------------------------------------
-  app:
+  # Entry point: WebSocket, REST API, Auth, Price generation
+  # Publishes orders to Order Service, receives status updates
+  gateway:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: trading-app
+      dockerfile: gateway-service/Dockerfile
+    container_name: trading-gateway
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trading_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trading
       SPRING_DATASOURCE_USERNAME: trading
-      SPRING_DATASOURCE_PASSWORD: trading123
+      SPRING_DATASOURCE_PASSWORD: trading
       SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: guest
-      SPRING_RABBITMQ_PASSWORD: guest
     ports:
       - "8080:8080"
     depends_on:
@@ -78,6 +85,72 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - trading-network
+    restart: on-failure
+
+  # ---------------------------------------------------------------------------
+  # Order Service
+  # ---------------------------------------------------------------------------
+  # Processes orders, persists to database, communicates with Mock M7
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    container_name: trading-order-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/trading
+      SPRING_DATASOURCE_USERNAME: trading
+      SPRING_DATASOURCE_PASSWORD: trading
+      SPRING_RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - trading-network
+    restart: on-failure
+
+  # ---------------------------------------------------------------------------
+  # Mock M7 Service
+  # ---------------------------------------------------------------------------
+  # Simulates EPEX SPOT trading engine
+  # Receives orders, sends ACK immediately, FILL/REJECT after delay
+  mock-m7:
+    build:
+      context: .
+      dockerfile: mock-m7-service/Dockerfile
+    container_name: trading-mock-m7
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8082:8082"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - trading-network
     restart: on-failure

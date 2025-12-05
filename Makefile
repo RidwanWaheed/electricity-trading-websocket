@@ -1,22 +1,57 @@
-.PHONY: up down run test fmt check build logs clean deps
+.PHONY: up down deps run-gateway run-order run-m7 test fmt check build logs clean rebuild
 
-# Start all Docker services
+# =============================================================================
+# Docker Commands
+# =============================================================================
+
+# Start all services (postgres, rabbitmq, gateway, order-service, mock-m7)
 up:
 	docker-compose up -d
 
-# Stop all Docker services
+# Stop all services
 down:
 	docker-compose down
 
-# Start only dependencies (postgres + rabbitmq)
+# Start only infrastructure (postgres + rabbitmq) for local development
 deps:
 	docker-compose up -d postgres rabbitmq
 
-# Run app locally (requires deps)
-run:
-	./mvnw spring-boot:run
+# Rebuild and restart all app containers
+rebuild:
+	docker-compose up -d --build gateway order-service mock-m7
 
-# Run unit tests
+# =============================================================================
+# Local Development (requires: make deps)
+# =============================================================================
+
+# Run Gateway locally
+run-gateway:
+	./mvnw spring-boot:run -pl gateway-service
+
+# Run Order Service locally
+run-order:
+	./mvnw spring-boot:run -pl order-service
+
+# Run Mock M7 locally
+run-m7:
+	./mvnw spring-boot:run -pl mock-m7-service
+
+# Run all services locally (in background) - requires 3 terminals or use &
+run-all:
+	@echo "Run each service in a separate terminal:"
+	@echo "  make run-gateway"
+	@echo "  make run-order"
+	@echo "  make run-m7"
+
+# =============================================================================
+# Build & Test
+# =============================================================================
+
+# Build all modules (skip tests)
+build:
+	./mvnw package -DskipTests
+
+# Run unit tests for all modules
 test:
 	./mvnw test
 
@@ -24,7 +59,7 @@ test:
 test-all:
 	./mvnw test -DexcludedGroups=
 
-# Format code
+# Format code (all modules)
 fmt:
 	./mvnw spotless:apply
 
@@ -32,18 +67,38 @@ fmt:
 check:
 	./mvnw spotless:check
 
-# Build JAR (skip tests)
-build:
-	./mvnw package -DskipTests
-
-# Tail app logs
-logs:
-	docker-compose logs -f app
-
 # Clean build artifacts
 clean:
 	./mvnw clean
 
-# Rebuild and restart app container
-rebuild:
-	docker-compose up -d --build app
+# =============================================================================
+# Logs
+# =============================================================================
+
+# Tail all service logs
+logs:
+	docker-compose logs -f gateway order-service mock-m7
+
+# Tail specific service logs
+logs-gateway:
+	docker-compose logs -f gateway
+
+logs-order:
+	docker-compose logs -f order-service
+
+logs-m7:
+	docker-compose logs -f mock-m7
+
+# =============================================================================
+# Utilities
+# =============================================================================
+
+# Check health of all services
+health:
+	@echo "Gateway:       $$(curl -s http://localhost:8080/actuator/health | head -c 50)"
+	@echo "Order Service: $$(curl -s http://localhost:8081/actuator/health | head -c 50)"
+	@echo "Mock M7:       $$(curl -s http://localhost:8082/actuator/health | head -c 50)"
+
+# Open RabbitMQ Management UI
+rabbitmq:
+	open http://localhost:15672
