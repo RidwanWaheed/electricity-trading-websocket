@@ -31,11 +31,42 @@ This repository serves as a hands-on learning project to understand WebSocket/ST
 
 ## Running the Project
 
+### Local Development
 ```bash
+# Start dependencies (PostgreSQL + RabbitMQ)
+docker-compose up -d postgres rabbitmq
+
+# Run the app
 ./mvnw spring-boot:run
 ```
 
+### Full Stack with Docker
+```bash
+docker-compose up -d
+```
+
 The application starts on `http://localhost:8080`
+
+## Testing
+
+```bash
+# Run unit tests
+./mvnw test
+
+# Run with integration tests (requires RabbitMQ)
+./mvnw test -DexcludedGroups=
+
+# Check code formatting
+./mvnw spotless:check
+
+# Auto-fix formatting
+./mvnw spotless:apply
+```
+
+**Test Coverage:**
+- 45 unit tests covering services, controllers, and messaging
+- JwtService, OrderService, AuthService, OrderConsumer
+- OrderHistoryController with authentication tests
 
 ## API Endpoints
 
@@ -64,20 +95,6 @@ The application starts on `http://localhost:8080`
     │   (prices, trades)  │                     │
 ```
 
-## Learning Roadmap
-
-See [docs/LEARNING_ROADMAP.md](docs/LEARNING_ROADMAP.md) for the complete learning path.
-
-### Completed
-- [x] Server → Client broadcasting (STOMP topics)
-- [x] Client → Server messaging (@MessageMapping)
-- [x] User-specific messages (queues)
-- [x] Error handling
-- [x] JWT Authentication
-- [x] Heartbeat & Connection Management
-- [x] Client-side Order Tracking (orderId correlation)
-- [x] Auto-reconnection with exponential backoff
-
 ## Why WebSocket over Polling?
 
 | Aspect | Polling | WebSocket |
@@ -89,7 +106,10 @@ See [docs/LEARNING_ROADMAP.md](docs/LEARNING_ROADMAP.md) for the complete learni
 
 For electricity trading where prices change rapidly and order execution speed matters, WebSocket is the clear choice.
 
-## Related Documentation
+## CI/CD
 
-- [Authentication Flow](docs/AUTH_FLOW.md) - How JWT auth works with WebSocket
-- [Learning Roadmap](docs/LEARNING_ROADMAP.md) - Topics covered and upcoming
+GitHub Actions pipeline runs on push/PR:
+1. Code formatting check (Spotless)
+2. Unit tests
+3. Build application
+4. Docker image build (on main branch)
