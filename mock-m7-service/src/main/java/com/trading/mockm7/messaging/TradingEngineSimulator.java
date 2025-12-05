@@ -95,13 +95,9 @@ public class TradingEngineSimulator {
     String m7ReferenceId = generateM7ReferenceId();
 
     M7AckResponse ack =
-        new M7AckResponse(
-            order.correlationId(), order.orderId(), m7ReferenceId, Instant.now());
+        new M7AckResponse(order.correlationId(), order.orderId(), m7ReferenceId, Instant.now());
 
-    log.info(
-        "[corr-id={}] Order acknowledged, m7RefId={}",
-        order.correlationId(),
-        m7ReferenceId);
+    log.info("[corr-id={}] Order acknowledged, m7RefId={}", order.correlationId(), m7ReferenceId);
 
     responsePublisher.publishAck(ack);
   }
@@ -115,10 +111,7 @@ public class TradingEngineSimulator {
   private void scheduleExecution(M7OrderRequest order) {
     int delayMs = randomDelay();
 
-    log.debug(
-        "[corr-id={}] Scheduling execution in {}ms",
-        order.correlationId(),
-        delayMs);
+    log.debug("[corr-id={}] Scheduling execution in {}ms", order.correlationId(), delayMs);
 
     CompletableFuture.delayedExecutor(delayMs, TimeUnit.MILLISECONDS)
         .execute(() -> executeOrder(order));
@@ -146,10 +139,7 @@ public class TradingEngineSimulator {
     } else {
       String reason = generateRejectReason();
 
-      log.info(
-          "[corr-id={}] Order REJECTED: {}",
-          order.correlationId(),
-          reason);
+      log.info("[corr-id={}] Order REJECTED: {}", order.correlationId(), reason);
 
       responsePublisher.publishFill(
           M7FillResponse.rejected(order.correlationId(), order.orderId(), reason));

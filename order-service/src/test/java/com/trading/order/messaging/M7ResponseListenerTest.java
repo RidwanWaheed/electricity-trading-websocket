@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * Unit tests for M7ResponseListener.
  *
  * <p>Tests the handling of M7 responses:
+ *
  * <ul>
  *   <li>ACK updates order to SUBMITTED
  *   <li>FILL updates order to FILLED with execution price
@@ -140,8 +141,7 @@ class M7ResponseListenerTest {
     void onM7Fill_shouldUpdateOrderToFilled() {
       testOrder.markSubmitted("M7-REF-789");
 
-      M7FillResponse fill =
-          M7FillResponse.filled("corr-456", "order-123", new BigDecimal("45.25"));
+      M7FillResponse fill = M7FillResponse.filled("corr-456", "order-123", new BigDecimal("45.25"));
       when(orderRepository.findByOrderId("order-123")).thenReturn(Optional.of(testOrder));
 
       listener.onM7Fill(fill);
@@ -213,8 +213,7 @@ class M7ResponseListenerTest {
     @DisplayName("FILL on PENDING order should be ignored (out of order)")
     void onM7Fill_onPendingOrder_shouldBeIgnored() {
       // Order is still PENDING (no ACK received yet)
-      M7FillResponse fill =
-          M7FillResponse.filled("corr-456", "order-123", new BigDecimal("45.00"));
+      M7FillResponse fill = M7FillResponse.filled("corr-456", "order-123", new BigDecimal("45.00"));
       when(orderRepository.findByOrderId("order-123")).thenReturn(Optional.of(testOrder));
 
       assertDoesNotThrow(() -> listener.onM7Fill(fill));
@@ -229,8 +228,7 @@ class M7ResponseListenerTest {
       testOrder.markSubmitted("M7-REF-789");
       testOrder.markFilled(new BigDecimal("45.00"));
 
-      M7FillResponse lateReject =
-          M7FillResponse.rejected("corr-456", "order-123", "Too late");
+      M7FillResponse lateReject = M7FillResponse.rejected("corr-456", "order-123", "Too late");
       when(orderRepository.findByOrderId("order-123")).thenReturn(Optional.of(testOrder));
 
       assertDoesNotThrow(() -> listener.onM7Fill(lateReject));

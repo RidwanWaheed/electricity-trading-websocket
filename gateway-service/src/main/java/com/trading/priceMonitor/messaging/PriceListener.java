@@ -1,14 +1,14 @@
 package com.trading.priceMonitor.messaging;
 
+import static com.trading.common.messaging.RabbitMQConstants.QUEUE_PRICES;
+
+import com.trading.common.messaging.PriceUpdate;
+import com.trading.priceMonitor.model.ElectricityPrice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
-
-import com.trading.common.messaging.PriceUpdate;
-import static com.trading.common.messaging.RabbitMQConstants.QUEUE_PRICES;
-import com.trading.priceMonitor.model.ElectricityPrice;
 
 /**
  * Listens for price updates from Mock M7 and broadcasts to WebSocket clients.

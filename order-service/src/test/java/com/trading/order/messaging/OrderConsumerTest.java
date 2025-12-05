@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * Unit tests for OrderConsumer.
  *
  * <p>These tests catch real bugs in order validation and processing:
+ *
  * <ul>
  *   <li>Null/invalid field handling
  *   <li>Boundary conditions (zero, negative values)
@@ -122,7 +123,13 @@ class OrderConsumerTest {
     void zeroQuantity_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", "BUY", BigDecimal.ZERO, new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "NORTH",
+              "BUY",
+              BigDecimal.ZERO,
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -137,7 +144,13 @@ class OrderConsumerTest {
     void negativeQuantity_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", "BUY", new BigDecimal("-1"), new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "NORTH",
+              "BUY",
+              new BigDecimal("-1"),
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -150,7 +163,8 @@ class OrderConsumerTest {
     @DisplayName("Null quantity should be rejected")
     void nullQuantity_shouldBeRejected() {
       var invalidOrder =
-          new OrderSubmitMessage("corr-123", "order-456", "trader1", "NORTH", "BUY", null, new BigDecimal("45.50"));
+          new OrderSubmitMessage(
+              "corr-123", "order-456", "trader1", "NORTH", "BUY", null, new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -167,7 +181,13 @@ class OrderConsumerTest {
     void zeroPrice_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", "BUY", new BigDecimal("100"), BigDecimal.ZERO);
+              "corr-123",
+              "order-456",
+              "trader1",
+              "NORTH",
+              "BUY",
+              new BigDecimal("100"),
+              BigDecimal.ZERO);
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -179,7 +199,13 @@ class OrderConsumerTest {
     void negativePrice_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("-0.01"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "NORTH",
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("-0.01"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -191,7 +217,13 @@ class OrderConsumerTest {
     void verySmallPrice_shouldBeAccepted() {
       var validSmallPriceOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("0.01"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "NORTH",
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("0.01"));
 
       orderConsumer.onOrderSubmit(validSmallPriceOrder);
 
@@ -208,7 +240,13 @@ class OrderConsumerTest {
     void emptyRegion_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "", "BUY", new BigDecimal("100"), new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "",
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -220,7 +258,13 @@ class OrderConsumerTest {
     void blankRegion_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "   ", "BUY", new BigDecimal("100"), new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "   ",
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -232,7 +276,13 @@ class OrderConsumerTest {
     void nullRegion_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", null, "BUY", new BigDecimal("100"), new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              null,
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -259,7 +309,13 @@ class OrderConsumerTest {
     void sellOrderType_shouldBeAccepted() {
       var sellOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", "SELL", new BigDecimal("100"), new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "NORTH",
+              "SELL",
+              new BigDecimal("100"),
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(sellOrder);
 
@@ -272,7 +328,13 @@ class OrderConsumerTest {
     void invalidOrderTypes_shouldBeRejected(String orderType) {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", orderType, new BigDecimal("100"), new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "NORTH",
+              orderType,
+              new BigDecimal("100"),
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -284,7 +346,13 @@ class OrderConsumerTest {
     void nullOrderType_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", null, new BigDecimal("100"), new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "NORTH",
+              null,
+              new BigDecimal("100"),
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -301,13 +369,23 @@ class OrderConsumerTest {
     void rejectedOrder_shouldUseCorrectCorrelationId() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "specific-corr-id", "order-456", "trader1", "NORTH", "INVALID", new BigDecimal("100"), new BigDecimal("45.50"));
+              "specific-corr-id",
+              "order-456",
+              "trader1",
+              "NORTH",
+              "INVALID",
+              new BigDecimal("100"),
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
       verify(statusPublisher)
           .publishStatusUpdate(
-              eq("specific-corr-id"), eq("order-456"), eq("trader1"), eq(OrderStatus.REJECTED), anyString());
+              eq("specific-corr-id"),
+              eq("order-456"),
+              eq("trader1"),
+              eq(OrderStatus.REJECTED),
+              anyString());
     }
 
     @Test
@@ -315,7 +393,13 @@ class OrderConsumerTest {
     void rejectedOrder_shouldNotBeForwardedToM7() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "", "BUY", new BigDecimal("100"), new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "",
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -332,7 +416,13 @@ class OrderConsumerTest {
     void savedEntity_shouldPreserveAllFields() {
       var order =
           new OrderSubmitMessage(
-              "corr-999", "order-888", "specificUser", "SOUTH", "SELL", new BigDecimal("250.5"), new BigDecimal("52.75"));
+              "corr-999",
+              "order-888",
+              "specificUser",
+              "SOUTH",
+              "SELL",
+              new BigDecimal("250.5"),
+              new BigDecimal("52.75"));
 
       orderConsumer.onOrderSubmit(order);
 
@@ -354,7 +444,13 @@ class OrderConsumerTest {
     void bigDecimalPrecision_shouldBePreserved() {
       var order =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", "BUY", new BigDecimal("100.1234"), new BigDecimal("45.5678"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              "NORTH",
+              "BUY",
+              new BigDecimal("100.1234"),
+              new BigDecimal("45.5678"));
 
       orderConsumer.onOrderSubmit(order);
 

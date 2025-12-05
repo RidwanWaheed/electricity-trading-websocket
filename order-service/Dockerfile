@@ -22,6 +22,11 @@ COPY common/src common/src
 COPY order-service/pom.xml order-service/
 COPY order-service/src order-service/src
 
+# Create stub pom.xml for modules we don't need (Maven requires them to exist)
+RUN mkdir -p gateway-service mock-m7-service && \
+    echo '<project><modelVersion>4.0.0</modelVersion><parent><groupId>com.trading</groupId><artifactId>electricity-trading</artifactId><version>0.0.1-SNAPSHOT</version></parent><artifactId>gateway-service</artifactId></project>' > gateway-service/pom.xml && \
+    echo '<project><modelVersion>4.0.0</modelVersion><parent><groupId>com.trading</groupId><artifactId>electricity-trading</artifactId><version>0.0.1-SNAPSHOT</version></parent><artifactId>mock-m7-service</artifactId></project>' > mock-m7-service/pom.xml
+
 # Build common module first, then order-service
 RUN chmod +x mvnw && ./mvnw package -DskipTests -pl common,order-service -am
 

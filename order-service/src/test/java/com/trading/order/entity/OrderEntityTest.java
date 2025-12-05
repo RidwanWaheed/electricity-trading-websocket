@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
  * <p>Order lifecycle: PENDING → SUBMITTED → FILLED/REJECTED
  *
  * <p>These tests verify:
+ *
  * <ul>
  *   <li>Valid state transitions work correctly
  *   <li>Invalid state transitions throw exceptions
@@ -116,8 +117,7 @@ class OrderEntityTest {
     @Test
     @DisplayName("markSubmitted with null reference should throw")
     void markSubmitted_withNullRef_shouldThrow() {
-      var exception =
-          assertThrows(IllegalArgumentException.class, () -> order.markSubmitted(null));
+      var exception = assertThrows(IllegalArgumentException.class, () -> order.markSubmitted(null));
       assertEquals("M7 reference ID cannot be null or blank", exception.getMessage());
       assertEquals(OrderStatus.PENDING, order.getStatus()); // Status unchanged
     }
@@ -231,8 +231,7 @@ class OrderEntityTest {
       order.markSubmitted("M7-1");
       order.markFilled(new BigDecimal("45"));
 
-      var exception =
-          assertThrows(IllegalStateException.class, () -> order.markSubmitted("M7-2"));
+      var exception = assertThrows(IllegalStateException.class, () -> order.markSubmitted("M7-2"));
       assertTrue(exception.getMessage().contains("FILLED"));
       assertTrue(exception.getMessage().contains("expected PENDING"));
     }
@@ -244,8 +243,7 @@ class OrderEntityTest {
       order.markRejected("Too late");
 
       var exception =
-          assertThrows(
-              IllegalStateException.class, () -> order.markFilled(new BigDecimal("45")));
+          assertThrows(IllegalStateException.class, () -> order.markFilled(new BigDecimal("45")));
       assertTrue(exception.getMessage().contains("REJECTED"));
       assertTrue(exception.getMessage().contains("expected SUBMITTED"));
     }
@@ -268,8 +266,7 @@ class OrderEntityTest {
     void markSubmitted_twice_shouldThrow() {
       order.markSubmitted("M7-1");
 
-      var exception =
-          assertThrows(IllegalStateException.class, () -> order.markSubmitted("M7-2"));
+      var exception = assertThrows(IllegalStateException.class, () -> order.markSubmitted("M7-2"));
       assertTrue(exception.getMessage().contains("SUBMITTED"));
       assertTrue(exception.getMessage().contains("expected PENDING"));
     }

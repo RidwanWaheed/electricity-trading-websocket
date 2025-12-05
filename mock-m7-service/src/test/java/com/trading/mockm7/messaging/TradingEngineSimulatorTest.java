@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * Unit tests for TradingEngineSimulator.
  *
  * <p>Tests the two-phase response pattern:
+ *
  * <ul>
  *   <li>ACK is sent immediately when order is received
  *   <li>FILL/REJECT is sent asynchronously after delay
@@ -138,7 +139,8 @@ class TradingEngineSimulatorTest {
     @DisplayName("BUY orders should be processed")
     void buyOrder_shouldBeProcessed() {
       var buyOrder =
-          new M7OrderRequest("corr-1", "order-1", "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("45"));
+          new M7OrderRequest(
+              "corr-1", "order-1", "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("45"));
 
       simulator.processOrder(buyOrder);
 
@@ -149,7 +151,8 @@ class TradingEngineSimulatorTest {
     @DisplayName("SELL orders should be processed")
     void sellOrder_shouldBeProcessed() {
       var sellOrder =
-          new M7OrderRequest("corr-1", "order-1", "SOUTH", "SELL", new BigDecimal("50"), new BigDecimal("46"));
+          new M7OrderRequest(
+              "corr-1", "order-1", "SOUTH", "SELL", new BigDecimal("50"), new BigDecimal("46"));
 
       simulator.processOrder(sellOrder);
 
@@ -159,8 +162,12 @@ class TradingEngineSimulatorTest {
     @Test
     @DisplayName("Different regions should be accepted")
     void differentRegions_shouldBeAccepted() {
-      var northOrder = new M7OrderRequest("corr-1", "order-1", "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("45"));
-      var southOrder = new M7OrderRequest("corr-2", "order-2", "SOUTH", "BUY", new BigDecimal("100"), new BigDecimal("45"));
+      var northOrder =
+          new M7OrderRequest(
+              "corr-1", "order-1", "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("45"));
+      var southOrder =
+          new M7OrderRequest(
+              "corr-2", "order-2", "SOUTH", "BUY", new BigDecimal("100"), new BigDecimal("45"));
 
       simulator.processOrder(northOrder);
       simulator.processOrder(southOrder);
@@ -178,7 +185,12 @@ class TradingEngineSimulatorTest {
     void largeQuantity_shouldBeProcessed() {
       var largeOrder =
           new M7OrderRequest(
-              "corr-1", "order-1", "NORTH", "BUY", new BigDecimal("999999.9999"), new BigDecimal("45"));
+              "corr-1",
+              "order-1",
+              "NORTH",
+              "BUY",
+              new BigDecimal("999999.9999"),
+              new BigDecimal("45"));
 
       simulator.processOrder(largeOrder);
 
@@ -190,7 +202,12 @@ class TradingEngineSimulatorTest {
     void precisePrice_shouldBeProcessed() {
       var preciseOrder =
           new M7OrderRequest(
-              "corr-1", "order-1", "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("45.123456"));
+              "corr-1",
+              "order-1",
+              "NORTH",
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("45.123456"));
 
       simulator.processOrder(preciseOrder);
 

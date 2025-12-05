@@ -20,7 +20,8 @@ import org.springframework.context.annotation.Configuration;
  * <ul>
  *   <li>LISTENS on order.submissions for orders from Gateway
  *   <li>PUBLISHES to m7.topic to send orders to Mock M7
- *   <li>LISTENS on order.m7-responses for ACK/FILL from Mock M7
+ *   <li>LISTENS on order.m7-ack for ACK responses from Mock M7
+ *   <li>LISTENS on order.m7-fill for FILL/REJECT responses from Mock M7
  *   <li>PUBLISHES to orders.topic to notify Gateway of status changes
  * </ul>
  */
@@ -54,13 +55,23 @@ public class RabbitMQConfig {
   }
 
   /**
-   * Queue for receiving M7 responses (ACK and FILL).
+   * Queue for receiving M7 ACK responses.
    *
-   * <p>Uses wildcard binding to receive both m7.response.ack and m7.response.fill
+   * <p>Bound specifically to m7.response.ack routing key.
    */
   @Bean
-  public Queue m7ResponsesQueue() {
-    return QueueBuilder.durable(QUEUE_M7_RESPONSES).build();
+  public Queue m7AckQueue() {
+    return QueueBuilder.durable(QUEUE_M7_ACK).build();
+  }
+
+  /**
+   * Queue for receiving M7 FILL responses.
+   *
+   * <p>Bound specifically to m7.response.fill routing key.
+   */
+  @Bean
+  public Queue m7FillQueue() {
+    return QueueBuilder.durable(QUEUE_M7_FILL).build();
   }
 
   // ===== BINDINGS =====
@@ -72,14 +83,16 @@ public class RabbitMQConfig {
     return BindingBuilder.bind(orderSubmissionsQueue).to(ordersExchange).with(ROUTING_ORDER_SUBMIT);
   }
 
-  /**
-   * Bind M7 responses queue to M7 exchange with wildcard.
-   *
-   * <p>m7.response.* matches both m7.response.ack and m7.response.fill
-   */
+  /** Bind M7 ACK queue to M7 exchange with specific routing key */
   @Bean
-  public Binding m7ResponsesBinding(Queue m7ResponsesQueue, TopicExchange m7Exchange) {
-    return BindingBuilder.bind(m7ResponsesQueue).to(m7Exchange).with(ROUTING_M7_RESPONSE_WILDCARD);
+  public Binding m7AckBinding(Queue m7AckQueue, TopicExchange m7Exchange) {
+    return BindingBuilder.bind(m7AckQueue).to(m7Exchange).with(ROUTING_M7_ACK);
+  }
+
+  /** Bind M7 FILL queue to M7 exchange with specific routing key */
+  @Bean
+  public Binding m7FillBinding(Queue m7FillQueue, TopicExchange m7Exchange) {
+    return BindingBuilder.bind(m7FillQueue).to(m7Exchange).with(ROUTING_M7_FILL);
   }
 
   // ===== MESSAGE CONVERTER =====

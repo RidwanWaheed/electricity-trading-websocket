@@ -93,8 +93,7 @@ public class PricePublisher {
     // Calculate new price with small random change (±5% max)
     double changePercent = (random.nextDouble() * 2 - 1) * MAX_CHANGE_PERCENT;
     BigDecimal multiplier = BigDecimal.valueOf(1 + changePercent / 100);
-    BigDecimal newPrice =
-        previousPrice.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
+    BigDecimal newPrice = previousPrice.multiply(multiplier).setScale(2, RoundingMode.HALF_UP);
 
     // Keep price within bounds
     if (newPrice.doubleValue() < MIN_PRICE) {

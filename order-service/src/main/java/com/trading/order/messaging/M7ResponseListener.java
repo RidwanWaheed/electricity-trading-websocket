@@ -5,7 +5,6 @@ import static com.trading.common.messaging.RabbitMQConstants.*;
 import com.trading.common.OrderStatus;
 import com.trading.common.messaging.M7AckResponse;
 import com.trading.common.messaging.M7FillResponse;
-import com.trading.order.entity.OrderEntity;
 import com.trading.order.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,12 +17,11 @@ import org.springframework.stereotype.Component;
  * <p>M7 sends two types of responses:
  *
  * <ul>
- *   <li>ACK - Immediate acknowledgment that order was received
- *   <li>FILL - Order was executed (filled) or rejected
+ *   <li>ACK - Immediate acknowledgment that order was received (order.m7-ack queue)
+ *   <li>FILL - Order was executed (filled) or rejected (order.m7-fill queue)
  * </ul>
  *
- * <p>Note: We use a single queue (order.m7-responses) with wildcard binding to receive both
- * message types. Spring AMQP routes to the correct method based on message type.
+ * <p>Each message type has its own dedicated queue to ensure proper routing and deserialization.
  */
 @Component
 public class M7ResponseListener {
@@ -46,7 +44,7 @@ public class M7ResponseListener {
    * <p>Handles duplicate ACKs gracefully - if order is already SUBMITTED or beyond, we log and
    * ignore (idempotent behavior).
    */
-  @RabbitListener(queues = QUEUE_M7_RESPONSES, id = "m7AckListener")
+  @RabbitListener(queues = QUEUE_M7_ACK, id = "m7AckListener")
   public void onM7Ack(M7AckResponse response) {
     log.info(
         "[corr-id={}] Received M7 ACK: orderId={}, m7RefId={}",
@@ -96,7 +94,7 @@ public class M7ResponseListener {
    * <p>Handles duplicate or out-of-order messages gracefully - if order is already in a terminal
    * state (FILLED/REJECTED), we log and ignore (idempotent behavior).
    */
-  @RabbitListener(queues = QUEUE_M7_RESPONSES, id = "m7FillListener")
+  @RabbitListener(queues = QUEUE_M7_FILL, id = "m7FillListener")
   public void onM7Fill(M7FillResponse response) {
     log.info(
         "[corr-id={}] Received M7 FILL response: orderId={}, filled={}",
@@ -112,8 +110,7 @@ public class M7ResponseListener {
                 if (response.filled()) {
                   order.markFilled(response.executionPrice());
                   orderRepository.save(order);
-                  log.info(
-                      "[corr-id={}] Order status updated to FILLED", response.correlationId());
+                  log.info("[corr-id={}] Order status updated to FILLED", response.correlationId());
 
                   statusPublisher.publishStatusUpdate(
                       response.correlationId(),

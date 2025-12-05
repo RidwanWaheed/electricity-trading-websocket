@@ -14,7 +14,7 @@ package com.trading.common.messaging;
  * 4. Mock M7 listens on QUEUE_M7_REQUESTS
  * 5. Mock M7 publishes ACK to M7_EXCHANGE with key ROUTING_M7_ACK
  * 6. Mock M7 publishes FILL to M7_EXCHANGE with key ROUTING_M7_FILL
- * 7. Order Service listens on QUEUE_M7_RESPONSES
+ * 7. Order Service listens on QUEUE_M7_ACK and QUEUE_M7_FILL
  * 8. Order Service publishes to ORDERS_EXCHANGE with key order.status.{userId}
  * 9. Gateway listens on QUEUE_ORDER_STATUS
  * </pre>
@@ -40,8 +40,11 @@ public final class RabbitMQConstants {
   /** Order Service listens here for new orders from Gateway */
   public static final String QUEUE_ORDER_SUBMISSIONS = "order.submissions";
 
-  /** Order Service listens here for M7 responses (ACK and FILL) */
-  public static final String QUEUE_M7_RESPONSES = "order.m7-responses";
+  /** Order Service listens here for M7 ACK responses */
+  public static final String QUEUE_M7_ACK = "order.m7-ack";
+
+  /** Order Service listens here for M7 FILL responses */
+  public static final String QUEUE_M7_FILL = "order.m7-fill";
 
   /** Mock M7 listens here for order requests */
   public static final String QUEUE_M7_REQUESTS = "m7.requests";
