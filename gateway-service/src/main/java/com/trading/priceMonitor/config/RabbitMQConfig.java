@@ -19,41 +19,59 @@ import org.springframework.context.annotation.Configuration;
  *
  * <ul>
  *   <li>PUBLISHES to orders.topic with key "order.submit" → Order Service receives
- *   <li>LISTENS on gateway.order-status queue for "order.status.*" → pushes to WebSocket
+ *   <li>LISTENS on gateway.order-status for "order.status.*" → pushes to WebSocket
+ *   <li>LISTENS on gateway.prices for "price.*" → broadcasts to WebSocket
  * </ul>
  */
 @Configuration
 public class RabbitMQConfig {
 
   // ===== EXCHANGES =====
-  // Gateway publishes to orders.topic exchange
 
+  /** Exchange for order messages */
   @Bean
   public TopicExchange ordersExchange() {
     return new TopicExchange(ORDERS_EXCHANGE);
   }
 
-  // ===== QUEUES =====
-  // Gateway listens on this queue for order status updates from Order Service
+  /** Exchange for price updates from Mock M7 */
+  @Bean
+  public TopicExchange pricesExchange() {
+    return new TopicExchange(PRICES_EXCHANGE);
+  }
 
+  // ===== QUEUES =====
+
+  /** Queue for order status updates from Order Service */
   @Bean
   public Queue orderStatusQueue() {
     return QueueBuilder.durable(QUEUE_ORDER_STATUS).build();
   }
 
-  // ===== BINDINGS =====
-  // Bind queue to exchange with wildcard pattern to receive all status updates
+  /** Queue for price updates from Mock M7 */
+  @Bean
+  public Queue pricesQueue() {
+    return QueueBuilder.durable(QUEUE_PRICES).build();
+  }
 
+  // ===== BINDINGS =====
+
+  /** Bind order status queue - receives all user status updates */
   @Bean
   public Binding orderStatusBinding(Queue orderStatusQueue, TopicExchange ordersExchange) {
-    // order.status.* matches order.status.john, order.status.jane, etc.
     return BindingBuilder.bind(orderStatusQueue)
         .to(ordersExchange)
         .with(ROUTING_ORDER_STATUS_WILDCARD);
   }
 
+  /** Bind prices queue - receives all regional price updates */
+  @Bean
+  public Binding pricesBinding(Queue pricesQueue, TopicExchange pricesExchange) {
+    // price.* matches price.NORTH, price.SOUTH, etc.
+    return BindingBuilder.bind(pricesQueue).to(pricesExchange).with(ROUTING_PRICE_WILDCARD);
+  }
+
   // ===== MESSAGE CONVERTER =====
-  // Use JSON for message serialization
 
   @Bean
   public MessageConverter jsonMessageConverter() {

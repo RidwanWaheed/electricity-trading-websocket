@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Configuration;
  *   <li>LISTENS on m7.requests for order requests from Order Service
  *   <li>PUBLISHES to m7.topic with m7.response.ack (immediate acknowledgment)
  *   <li>PUBLISHES to m7.topic with m7.response.fill (delayed fill/reject)
+ *   <li>PUBLISHES to prices.topic with price updates (market data broadcast)
  * </ul>
  */
 @Configuration
@@ -28,10 +29,16 @@ public class RabbitMQConfig {
 
   // ===== EXCHANGES =====
 
-  /** Exchange for M7 communication */
+  /** Exchange for M7 order communication */
   @Bean
   public TopicExchange m7Exchange() {
     return new TopicExchange(M7_EXCHANGE);
+  }
+
+  /** Exchange for price updates (market data) */
+  @Bean
+  public TopicExchange pricesExchange() {
+    return new TopicExchange(PRICES_EXCHANGE);
   }
 
   // ===== QUEUES =====

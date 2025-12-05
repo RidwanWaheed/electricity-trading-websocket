@@ -32,6 +32,9 @@ public final class RabbitMQConstants {
   /** Exchange for M7 communication (Order Service ↔ Mock M7) */
   public static final String M7_EXCHANGE = "m7.topic";
 
+  /** Exchange for price updates (Mock M7 → Gateway) */
+  public static final String PRICES_EXCHANGE = "prices.topic";
+
   // ===== QUEUES =====
 
   /** Order Service listens here for new orders from Gateway */
@@ -45,6 +48,9 @@ public final class RabbitMQConstants {
 
   /** Gateway listens here for order status updates */
   public static final String QUEUE_ORDER_STATUS = "gateway.order-status";
+
+  /** Gateway listens here for price updates from Mock M7 */
+  public static final String QUEUE_PRICES = "gateway.prices";
 
   // ===== ROUTING KEYS =====
 
@@ -71,4 +77,15 @@ public final class RabbitMQConstants {
 
   /** Wildcard binding for Order Service to receive all M7 responses */
   public static final String ROUTING_M7_RESPONSE_WILDCARD = "m7.response.*";
+
+  // ===== PRICE ROUTING KEYS =====
+
+  /**
+   * Price update routing key pattern. Use with String.format() to add region. Example:
+   * String.format(ROUTING_PRICE_PATTERN, "NORTH") → "price.NORTH"
+   */
+  public static final String ROUTING_PRICE_PATTERN = "price.%s";
+
+  /** Wildcard binding for Gateway to receive all price updates */
+  public static final String ROUTING_PRICE_WILDCARD = "price.*";
 }

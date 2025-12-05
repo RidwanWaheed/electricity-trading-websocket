@@ -2,10 +2,17 @@ package com.trading.priceMonitor;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * Gateway Service - entry point for the trading platform.
+ *
+ * <p>Handles WebSocket connections, REST API, authentication, and routes messages between clients
+ * and backend services via RabbitMQ.
+ *
+ * <p>Note: Price generation moved to Mock M7 Service. Gateway now receives prices via RabbitMQ and
+ * forwards to WebSocket clients.
+ */
 @SpringBootApplication
-@EnableScheduling // Enables scheduled tasks for price broadcasting
 public class ElectricityPriceMonitorApplication {
 
   public static void main(String[] args) {
