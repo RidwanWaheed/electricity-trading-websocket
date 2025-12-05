@@ -2,71 +2,90 @@
 
 A practice project for implementing real-time WebSocket communication, built as a foundation for a larger electricity trading platform that connects to the **M7 EPEX SPOT market**.
 
+![Frontend Screenshot](assets/screenshot.png)
+
 ## Background
 
 Our main project is an electricity trading platform currently in **alpha phase**. Initially, we implemented polling to stream live market data to the frontend with plans to "defer WebSocket for later." We quickly realized this approach would accumulate significant technical debt—polling doesn't scale well for real-time trading where milliseconds matter.
 
 This repository serves as a hands-on learning project to understand WebSocket/STOMP patterns before integrating them into the production trading platform.
 
-## Features
-
-- **Real-time Price Broadcasting** - Server pushes electricity prices to all connected clients via `/topic/prices`
-- **WebSocket Messaging Demo** - Demonstrates client-to-server messaging patterns (`/app/order`)
-- **User-specific Messages** - Private messages sent only to the originating user (`/user/queue/order-confirmation`)
-- **JWT Authentication** - Secure WebSocket connections with token-based auth
-- **Client-side Order Tracking** - Correlates confirmations with original orders by orderId (no data duplication over the wire)
-- **Auto-reconnection** - Exponential backoff reconnection (1s, 2s, 4s...) with max 5 attempts
-- **Error Handling** - Graceful error propagation to clients (`/user/queue/errors`)
-- **Heartbeat** - Connection health monitoring with 10-second intervals
-
-> **Note:** This demo sends orders via WebSocket for learning purposes. In production, orders should be submitted via REST for reliability, while WebSocket handles real-time updates (prices, trade confirmations, order status changes).
-
 ## Tech Stack
 
-- Java 21
-- Spring Boot 3.5
-- Spring WebSocket with STOMP protocol
-- Spring Security
-- JWT (jjwt library)
+![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=flat&logo=springboot&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)
+![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3-FF6600?style=flat&logo=rabbitmq&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)
 
-## Running the Project
+## Architecture
 
-### Local Development
-```bash
-# Start dependencies (PostgreSQL + RabbitMQ)
-docker-compose up -d postgres rabbitmq
-
-# Run the app
-./mvnw spring-boot:run
+```
+┌─────────────┐       WebSocket/STOMP        ┌─────────────────────────────────────┐
+│   Browser   │◄────────────────────────────►│           Spring Boot               │
+│             │    • /topic/prices           │                                     │
+│  - SockJS   │    • /user/queue/orders      │  ┌──────────┐    ┌───────────────┐  │
+│  - STOMP    │    • /app/order              │  │ WebSocket│    │ Order Service │  │
+└─────────────┘                              │  │ Handler  │───►│               │  │
+                                             │  └──────────┘    └──────┬────────┘  │
+      │                                      │                         │           │
+      │ REST API                             │  ┌─────────┐            │           │
+      │ • /api/auth/*                        │  │  Price  │            │           │
+      └─────────────────────────────────────►│  │ Service │            │           │
+                                             │  └────┬────┘            │           │
+                                             └───────┼─────────────────│───────────┘
+                                                     │                 │
+                                         publish     │                 │ consume/publish
+                                                     ▼                 ▼
+                                             ┌─────────────────────────────┐
+                                             │         RabbitMQ            │
+                                             │  • trading.prices (fanout)  │
+                                             │  • trading.orders (direct)  │
+                                             └─────────────────────────────┘
+                                                            │
+                                                            │ persist
+                                                            ▼
+                                             ┌─────────────────────────────┐
+                                             │        PostgreSQL           │
+                                             │  • users, orders tables     │
+                                             └─────────────────────────────┘
 ```
 
-### Full Stack with Docker
+## Features
+
+- **Real-time Price Broadcasting** - Server pushes electricity prices to all connected clients
+- **WebSocket + STOMP** - Bi-directional messaging with topic subscriptions
+- **User-specific Messages** - Private order confirmations per user session
+- **JWT Authentication** - Secure WebSocket connections with token-based auth
+- **Auto-reconnection** - Exponential backoff (1s, 2s, 4s...) with max 5 attempts
+- **Message Queuing** - RabbitMQ for order processing pipeline
+
+## Quick Start
+
 ```bash
-docker-compose up -d
+make up      # Start full Docker stack
 ```
 
 The application starts on `http://localhost:8080`
 
-## Testing
-
+### Local Development
 ```bash
-# Run unit tests
-./mvnw test
-
-# Run with integration tests (requires RabbitMQ)
-./mvnw test -DexcludedGroups=
-
-# Check code formatting
-./mvnw spotless:check
-
-# Auto-fix formatting
-./mvnw spotless:apply
+make deps    # Start PostgreSQL + RabbitMQ
+make run     # Run the app
 ```
 
-**Test Coverage:**
-- 45 unit tests covering services, controllers, and messaging
-- JwtService, OrderService, AuthService, OrderConsumer
-- OrderHistoryController with authentication tests
+## Make Commands
+
+| Command | Description |
+|---------|-------------|
+| `make up` | Start full Docker stack |
+| `make down` | Stop all containers |
+| `make deps` | Start only postgres + rabbitmq |
+| `make run` | Run app locally |
+| `make test` | Run unit tests |
+| `make fmt` | Auto-format code |
+| `make build` | Build JAR |
+| `make logs` | Tail app container logs |
 
 ## API Endpoints
 
@@ -74,42 +93,23 @@ The application starts on `http://localhost:8080`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/auth/login` | Authenticate and receive JWT |
+| POST | `/api/auth/register` | Register new user |
+| GET | `/api/orders` | Get user's order history |
+| GET | `/api/orders/{orderId}` | Get specific order |
+| DELETE | `/api/orders/{orderId}` | Cancel an order |
 
 ### WebSocket (STOMP)
 | Destination | Direction | Description |
 |-------------|-----------|-------------|
 | `/topic/prices` | Server → Client | Subscribe for price updates |
-| `/app/order` | Client → Server | Demo: send messages to server |
-| `/user/queue/order-confirmation` | Server → Client | Receive private confirmations |
+| `/app/order` | Client → Server | Submit order |
+| `/user/queue/order-confirmation` | Server → Client | Receive order confirmations |
 | `/user/queue/errors` | Server → Client | Receive error messages |
-
-### Production Architecture (Recommended)
-```
-┌────────┐         ┌─────────────┐         ┌──────────┐
-│ Client │         │   Backend   │         │ M7 EPEX  │
-└───┬────┘         └──────┬──────┘         └────┬─────┘
-    │                     │                     │
-    │ ── REST ──────────> │ ── API ──────────>  │  Orders
-    │                     │                     │
-    │ <── WebSocket ───── │ <─────────────────  │  Updates
-    │   (prices, trades)  │                     │
-```
-
-## Why WebSocket over Polling?
-
-| Aspect | Polling | WebSocket |
-|--------|---------|-----------|
-| Latency | High (interval-based) | Low (instant push) |
-| Server Load | High (constant requests) | Low (persistent connection) |
-| Bandwidth | Wasteful (repeated headers) | Efficient (minimal overhead) |
-| Real-time Trading | Not suitable | Ideal |
-
-For electricity trading where prices change rapidly and order execution speed matters, WebSocket is the clear choice.
 
 ## CI/CD
 
-GitHub Actions pipeline runs on push/PR:
-1. Code formatting check (Spotless)
+GitHub Actions runs on push/PR:
+1. Code formatting (Spotless)
 2. Unit tests
-3. Build application
-4. Docker image build (on main branch)
+3. Build
+4. Docker image (main branch)
