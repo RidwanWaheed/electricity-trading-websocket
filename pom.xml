@@ -59,6 +59,55 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- ==================== Phase 2: Docker & Persistence ==================== -->
+
+        <!-- Spring Boot Actuator - Health endpoints for Docker/Kubernetes
+             WHY: Docker's HEALTHCHECK and orchestrators need to know if the app is healthy.
+             Provides /actuator/health which checks database, RabbitMQ, disk space, etc. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Spring AMQP - RabbitMQ integration
+             WHY: AMQP (Advanced Message Queuing Protocol) is RabbitMQ's native protocol.
+             This is how M7 EPEX communicates - messages are published to exchanges,
+             routed to queues, and consumed by your application. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- Spring Data JPA - Database ORM
+             WHY: JPA (Java Persistence API) maps Java objects to database tables.
+             Instead of writing SQL, you work with Java objects. Hibernate implements JPA.
+             Example: userRepository.save(user) generates INSERT INTO users... -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- PostgreSQL Driver - JDBC driver for PostgreSQL
+             WHY: Java needs a driver to speak PostgreSQL's wire protocol.
+             This is the official driver maintained by the PostgreSQL team. -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- H2 Database - In-memory database for local development
+             WHY: Allows running locally without installing PostgreSQL.
+             scope=runtime means it's not needed for compilation, only at runtime.
+             In Docker, PostgreSQL is used instead. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ==================== JWT Authentication ==================== -->
+
         <!-- JWT Library -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
