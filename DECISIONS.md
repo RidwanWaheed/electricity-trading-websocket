@@ -40,15 +40,15 @@ Key technical decisions made during development.
 
 ---
 
-## ADR-004: Gateway Keeps Auth and Prices
+## ADR-004: Gateway Keeps Auth Only
 
-**Decision:** Auth and price generation stay in Gateway instead of separate services.
+**Decision:** Auth stays in Gateway; price generation moved to Mock M7.
 
 **Rationale:**
-- Extracting them adds complexity without clear benefit at this scale
 - Auth is tightly coupled with WebSocket handshake (JWT validation)
-- Price generation is simple scheduled task, not worth a separate service
-- Focus learning on the patterns that matter: async messaging, correlation IDs
+- Prices should come from exchange (Mock M7), not be generated internally
+- Gateway is a pass-through for market data, not a source
+- Mirrors real trading systems where exchange is source of truth for prices
 
 ---
 
@@ -121,3 +121,16 @@ Key technical decisions made during development.
 - Routing key contains username for logging/debugging
 - Gateway extracts username from message to route to correct WebSocket session
 - Alternative (queue per user) doesn't scale well
+
+---
+
+## ADR-011: Price Feed from Mock M7 (Market Data Pattern)
+
+**Decision:** Prices originate from Mock M7 and flow through RabbitMQ to Gateway.
+
+**Rationale:**
+- Real trading systems receive prices from exchange, not generate them
+- Separates market data (pub/sub broadcast) from order flow (request/response)
+- Gateway becomes a pass-through, not a source of truth
+- Teaches realistic market data distribution pattern
+- Mock M7 publishes to `prices.topic`, Gateway subscribes and forwards to WebSocket
