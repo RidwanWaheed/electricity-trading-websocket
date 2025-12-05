@@ -16,22 +16,6 @@ import com.trading.priceMonitor.model.OrderConfirmation;
 import com.trading.priceMonitor.model.Status;
 import com.trading.priceMonitor.service.OrderService;
 
-/**
- * Consumes order messages from RabbitMQ and processes them.
- *
- * This is the CONSUMER in the messaging pattern:
- * - Listens to the order queue
- * - Calls OrderService to process (validate, persist)
- * - Sends confirmation back to user via WebSocket
- *
- * Why @RabbitListener?
- * - Spring automatically creates a listener container
- * - Messages are deserialized from JSON to OrderMessage
- * - Multiple instances can consume from same queue (load balancing)
- *
- * Key concept: This closes the async loop.
- * User → WebSocket → Publisher → Queue → Consumer → WebSocket → User
- */
 @Component
 public class OrderConsumer {
 
@@ -45,17 +29,6 @@ public class OrderConsumer {
         this.messagingTemplate = messagingTemplate;
     }
 
-    /**
-     * Processes messages from the order queue.
-     *
-     * @RabbitListener tells Spring:
-     * 1. Create a listener on the specified queue
-     * 2. When a message arrives, deserialize it and call this method
-     * 3. Acknowledge the message after successful processing
-     *
-     * If this method throws an exception, the message is NOT acknowledged
-     * and will be redelivered (or sent to dead-letter queue if configured).
-     */
     @RabbitListener(queues = RabbitMQConfig.ORDER_QUEUE)
     public void consume(OrderMessage message) {
         log.info("Received order from queue: orderId={}, user={}",
@@ -63,7 +36,6 @@ public class OrderConsumer {
 
         Optional<OrderEntity> result = orderService.processOrder(message);
 
-        // Build confirmation based on result
         OrderConfirmation confirmation;
         if (result.isPresent()) {
             OrderEntity order = result.get();
@@ -78,7 +50,6 @@ public class OrderConsumer {
                     Instant.now()
             );
         } else {
-            // Processing failed (duplicate or user not found)
             confirmation = new OrderConfirmation(
                     message.orderId(),
                     Status.REJECTED,
@@ -87,8 +58,6 @@ public class OrderConsumer {
             );
         }
 
-        // Send result back to the user via WebSocket
-        // The user is subscribed to /user/queue/order-confirmation
         sendConfirmation(message.username(), confirmation);
     }
 

@@ -14,16 +14,6 @@ import com.trading.priceMonitor.model.Status;
 import com.trading.priceMonitor.repository.OrderRepository;
 import com.trading.priceMonitor.repository.UserRepository;
 
-/**
- * Business logic for order processing.
- *
- * This is where the actual work happens:
- * - Validates business rules
- * - Persists orders to database
- * - Updates order status
- *
- * Called by the consumer after receiving messages from the queue.
- */
 @Service
 public class OrderService {
 
@@ -37,24 +27,16 @@ public class OrderService {
         this.userRepository = userRepository;
     }
 
-    /**
-     * Processes an order from the message queue.
-     *
-     * @param message The order message from RabbitMQ
-     * @return The processed order entity, or empty if processing failed
-     */
     @Transactional
     public Optional<OrderEntity> processOrder(OrderMessage message) {
         log.info("Processing order: orderId={}, user={}",
                 message.orderId(), message.username());
 
-        // Check for duplicate order (idempotency)
         if (orderRepository.existsByOrderId(message.orderId())) {
             log.warn("Duplicate order rejected: {}", message.orderId());
             return Optional.empty();
         }
 
-        // Find the user - order must belong to someone
         Optional<UserEntity> userOptional = userRepository.findByUsername(message.username());
         if (userOptional.isEmpty()) {
             log.error("User not found for order: user={}, orderId={}",
@@ -64,7 +46,6 @@ public class OrderService {
 
         UserEntity user = userOptional.get();
 
-        // Create and save the order
         OrderEntity order = new OrderEntity(
                 message.orderId(),
                 user,
@@ -74,7 +55,6 @@ public class OrderService {
                 message.price()
         );
 
-        // Business logic: validate and set status
         if (isValidOrder(message)) {
             order.setStatus(Status.ACCEPTED);
         } else {
@@ -88,19 +68,8 @@ public class OrderService {
         return Optional.of(savedOrder);
     }
 
-    /**
-     * Business validation rules.
-     * In a real system, this would check:
-     * - User's trading limits
-     * - Market hours
-     * - Price within acceptable range
-     * - Sufficient balance/credit
-     */
     private boolean isValidOrder(OrderMessage message) {
-        // For learning: simple validation
-        // Real trading systems have complex rules here
         return message.quantity().signum() > 0
                 && message.price().signum() > 0;
     }
-
 }

@@ -17,15 +17,6 @@ import com.trading.priceMonitor.model.Order;
 import com.trading.priceMonitor.model.OrderConfirmation;
 import com.trading.priceMonitor.model.Status;
 
-/**
- * WebSocket controller for order handling.
- *
- * Before RabbitMQ: Received order → Processed → Responded (synchronous)
- * After RabbitMQ:  Received order → Published to queue → Acknowledged (async)
- *
- * The actual processing happens in OrderConsumer, which sends the final
- * confirmation back to the user via WebSocket.
- */
 @Controller
 public class OrderController {
 
@@ -39,15 +30,6 @@ public class OrderController {
         this.orderPublisher = orderPublisher;
     }
 
-    /**
-     * Handles incoming orders via WebSocket.
-     *
-     * Flow:
-     * 1. Extract username from authenticated principal
-     * 2. Send immediate acknowledgment (order received, not yet processed)
-     * 3. Publish to RabbitMQ queue for async processing
-     * 4. Consumer will send final confirmation after processing
-     */
     @MessageMapping("/order")
     public void handleOrder(Order order, Principal principal) {
         String username = extractUsername(principal);
@@ -55,8 +37,7 @@ public class OrderController {
         log.info("Order received via WebSocket: orderId={}, user={}",
                 order.orderId(), username);
 
-        // Immediate acknowledgment - tells user "we got your order"
-        // This is NOT the final confirmation - that comes after processing
+        // Send immediate PENDING acknowledgment before async processing
         OrderConfirmation acknowledgment = new OrderConfirmation(
                 order.orderId(),
                 Status.PENDING,
@@ -65,7 +46,7 @@ public class OrderController {
         );
         messagingTemplate.convertAndSendToUser(username, "/queue/order-confirmation", acknowledgment);
 
-        // Create message with server-validated username and publish to queue
+        // Transform to internal message with server-validated username
         OrderMessage message = new OrderMessage(
                 order.orderId(),
                 username,
