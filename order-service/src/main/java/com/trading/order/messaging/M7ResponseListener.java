@@ -42,6 +42,9 @@ public class M7ResponseListener {
    * Handle M7 acknowledgment response.
    *
    * <p>This means M7 received our order. We update status to SUBMITTED.
+   *
+   * <p>Handles duplicate ACKs gracefully - if order is already SUBMITTED or beyond, we log and
+   * ignore (idempotent behavior).
    */
   @RabbitListener(queues = QUEUE_M7_RESPONSES, id = "m7AckListener")
   public void onM7Ack(M7AckResponse response) {
@@ -55,16 +58,28 @@ public class M7ResponseListener {
         .findByOrderId(response.orderId())
         .ifPresentOrElse(
             order -> {
-              order.markSubmitted(response.m7ReferenceId());
-              orderRepository.save(order);
-              log.info("[corr-id={}] Order status updated to SUBMITTED", response.correlationId());
+              try {
+                order.markSubmitted(response.m7ReferenceId());
+                orderRepository.save(order);
+                log.info(
+                    "[corr-id={}] Order status updated to SUBMITTED", response.correlationId());
 
-              statusPublisher.publishStatusUpdate(
-                  response.correlationId(),
-                  response.orderId(),
-                  order.getUsername(),
-                  OrderStatus.SUBMITTED,
-                  "Order acknowledged by trading engine (M7 ref: " + response.m7ReferenceId() + ")");
+                statusPublisher.publishStatusUpdate(
+                    response.correlationId(),
+                    response.orderId(),
+                    order.getUsername(),
+                    OrderStatus.SUBMITTED,
+                    "Order acknowledged by trading engine (M7 ref: "
+                        + response.m7ReferenceId()
+                        + ")");
+              } catch (IllegalStateException e) {
+                // Duplicate ACK or order already processed - log and ignore (idempotent)
+                log.warn(
+                    "[corr-id={}] Ignoring ACK - order already in state {}: {}",
+                    response.correlationId(),
+                    order.getStatus(),
+                    e.getMessage());
+              }
             },
             () ->
                 log.error(
@@ -77,6 +92,9 @@ public class M7ResponseListener {
    * Handle M7 fill/reject response.
    *
    * <p>This means M7 has executed (filled) or rejected our order.
+   *
+   * <p>Handles duplicate or out-of-order messages gracefully - if order is already in a terminal
+   * state (FILLED/REJECTED), we log and ignore (idempotent behavior).
    */
   @RabbitListener(queues = QUEUE_M7_RESPONSES, id = "m7FillListener")
   public void onM7Fill(M7FillResponse response) {
@@ -90,28 +108,39 @@ public class M7ResponseListener {
         .findByOrderId(response.orderId())
         .ifPresentOrElse(
             order -> {
-              if (response.filled()) {
-                order.markFilled(response.executionPrice());
-                orderRepository.save(order);
-                log.info("[corr-id={}] Order status updated to FILLED", response.correlationId());
+              try {
+                if (response.filled()) {
+                  order.markFilled(response.executionPrice());
+                  orderRepository.save(order);
+                  log.info(
+                      "[corr-id={}] Order status updated to FILLED", response.correlationId());
 
-                statusPublisher.publishStatusUpdate(
-                    response.correlationId(),
-                    response.orderId(),
-                    order.getUsername(),
-                    OrderStatus.FILLED,
-                    "Order filled at " + response.executionPrice() + " EUR/MWh");
-              } else {
-                order.markRejected(response.rejectReason());
-                orderRepository.save(order);
-                log.info("[corr-id={}] Order status updated to REJECTED", response.correlationId());
+                  statusPublisher.publishStatusUpdate(
+                      response.correlationId(),
+                      response.orderId(),
+                      order.getUsername(),
+                      OrderStatus.FILLED,
+                      "Order filled at " + response.executionPrice() + " EUR/MWh");
+                } else {
+                  order.markRejected(response.rejectReason());
+                  orderRepository.save(order);
+                  log.info(
+                      "[corr-id={}] Order status updated to REJECTED", response.correlationId());
 
-                statusPublisher.publishStatusUpdate(
+                  statusPublisher.publishStatusUpdate(
+                      response.correlationId(),
+                      response.orderId(),
+                      order.getUsername(),
+                      OrderStatus.REJECTED,
+                      "Order rejected: " + response.rejectReason());
+                }
+              } catch (IllegalStateException e) {
+                // Duplicate FILL/REJECT or order in wrong state - log and ignore (idempotent)
+                log.warn(
+                    "[corr-id={}] Ignoring FILL response - order already in state {}: {}",
                     response.correlationId(),
-                    response.orderId(),
-                    order.getUsername(),
-                    OrderStatus.REJECTED,
-                    "Order rejected: " + response.rejectReason());
+                    order.getStatus(),
+                    e.getMessage());
               }
             },
             () ->

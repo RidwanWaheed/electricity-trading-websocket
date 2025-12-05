@@ -171,8 +171,17 @@ public class OrderEntity {
    * Mark order as submitted (M7 acknowledged).
    *
    * @param m7ReferenceId The reference ID assigned by M7
+   * @throws IllegalArgumentException if m7ReferenceId is null or blank
+   * @throws IllegalStateException if order is not in PENDING state
    */
   public void markSubmitted(String m7ReferenceId) {
+    if (m7ReferenceId == null || m7ReferenceId.isBlank()) {
+      throw new IllegalArgumentException("M7 reference ID cannot be null or blank");
+    }
+    if (this.status != OrderStatus.PENDING) {
+      throw new IllegalStateException(
+          "Cannot mark as SUBMITTED: order is " + this.status + ", expected PENDING");
+    }
     this.status = OrderStatus.SUBMITTED;
     this.m7ReferenceId = m7ReferenceId;
     this.updatedAt = Instant.now();
@@ -182,8 +191,17 @@ public class OrderEntity {
    * Mark order as filled (executed by M7).
    *
    * @param executionPrice The price at which the order was filled
+   * @throws IllegalArgumentException if executionPrice is null
+   * @throws IllegalStateException if order is not in SUBMITTED state
    */
   public void markFilled(BigDecimal executionPrice) {
+    if (executionPrice == null) {
+      throw new IllegalArgumentException("Execution price cannot be null");
+    }
+    if (this.status != OrderStatus.SUBMITTED) {
+      throw new IllegalStateException(
+          "Cannot mark as FILLED: order is " + this.status + ", expected SUBMITTED");
+    }
     this.status = OrderStatus.FILLED;
     this.executionPrice = executionPrice;
     this.updatedAt = Instant.now();
@@ -193,8 +211,13 @@ public class OrderEntity {
    * Mark order as rejected by M7.
    *
    * @param reason The reason for rejection
+   * @throws IllegalStateException if order is not in SUBMITTED state
    */
   public void markRejected(String reason) {
+    if (this.status != OrderStatus.SUBMITTED) {
+      throw new IllegalStateException(
+          "Cannot mark as REJECTED: order is " + this.status + ", expected SUBMITTED");
+    }
     this.status = OrderStatus.REJECTED;
     this.rejectReason = reason;
     this.updatedAt = Instant.now();
