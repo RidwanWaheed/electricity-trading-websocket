@@ -81,15 +81,22 @@ public class OrderController {
       return;
     }
 
+    BigDecimal orderValue = order.price().multiply(order.quantity());
+
     // For BUY orders, check and reserve balance
     if ("BUY".equals(order.type())) {
-      BigDecimal orderCost = order.price().multiply(order.quantity());
-      if (!balanceService.reserveBalance(order.orderId(), username, orderCost)) {
+      if (!balanceService.reserveBalance(order.orderId(), username, orderValue)) {
         log.warn("[corr-id={}] Insufficient balance for BUY order", correlationId);
         sendRejection(username, order.orderId(), "Insufficient balance");
         return;
       }
-      log.info("[corr-id={}] Reserved {} from balance for BUY order", correlationId, orderCost);
+      log.info("[corr-id={}] Reserved {} from balance for BUY order", correlationId, orderValue);
+    }
+
+    // For SELL orders, track for later credit when filled
+    if ("SELL".equals(order.type())) {
+      balanceService.trackSellOrder(order.orderId(), username, orderValue);
+      log.info("[corr-id={}] Tracking SELL order for {} credit when filled", correlationId, orderValue);
     }
 
     // Send immediate PENDING acknowledgment before async processing

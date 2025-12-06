@@ -37,7 +37,9 @@ flowchart LR
 | RabbitMQ | 5672 | Message broker (Management UI: 15672) |
 | PostgreSQL | 5432 | Database (users, orders) |
 
-**[Detailed Architecture Documentation](docs/ARCHITECTURE.md)** - Design patterns, message flows, security architecture, and technology decisions.
+**[Architecture Documentation](docs/ARCHITECTURE.md)** - Design patterns, message flows, and system design.
+
+**[Decision Log](docs/DECISIONS.md)** - Architectural Decision Records (ADRs) explaining key technical choices.
 
 ## Features
 

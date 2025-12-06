@@ -15,7 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Handles balance checks for order submissions and balance updates on order fills.
  *
- * <p>Tracks reserved amounts for pending BUY orders so they can be refunded if rejected.
+ * <p>Tracks:
+ * <ul>
+ *   <li>BUY orders: Reserved amounts that can be refunded if rejected
+ *   <li>SELL orders: Pending credits to be added when filled
+ * </ul>
  */
 @Service
 public class BalanceService {
@@ -25,18 +29,25 @@ public class BalanceService {
   private final UserRepository userRepository;
 
   /**
-   * Tracks reserved amounts for pending orders.
+   * Tracks reserved amounts for pending BUY orders.
    *
-   * <p>Key: orderId, Value: ReservedAmount (username + amount)
+   * <p>Key: orderId, Value: PendingOrder (username + amount)
    */
-  private final ConcurrentHashMap<String, ReservedAmount> reservedAmounts = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, PendingOrder> pendingBuyOrders = new ConcurrentHashMap<>();
+
+  /**
+   * Tracks pending SELL orders waiting for fill to credit balance.
+   *
+   * <p>Key: orderId, Value: PendingOrder (username + amount)
+   */
+  private final ConcurrentHashMap<String, PendingOrder> pendingSellOrders = new ConcurrentHashMap<>();
 
   public BalanceService(UserRepository userRepository) {
     this.userRepository = userRepository;
   }
 
-  /** Holds information about a reserved amount for an order. */
-  private record ReservedAmount(String username, BigDecimal amount) {}
+  /** Holds information about a pending order (BUY or SELL). */
+  private record PendingOrder(String username, BigDecimal amount) {}
 
   /**
    * Get the current balance for a user.
@@ -82,7 +93,7 @@ public class BalanceService {
     if (user.deductBalance(amount)) {
       userRepository.save(user);
       // Track the reservation for potential refund
-      reservedAmounts.put(orderId, new ReservedAmount(username, amount));
+      pendingBuyOrders.put(orderId, new PendingOrder(username, amount));
       log.info(
           "Reserved {} from user {} balance for order {}. New balance: {}",
           amount,
@@ -138,26 +149,71 @@ public class BalanceService {
    * @param orderId The order ID
    */
   public void onOrderFilled(String orderId) {
-    ReservedAmount removed = reservedAmounts.remove(orderId);
-    if (removed != null) {
-      log.info("Order {} filled. Cleared reservation of {} for user {}", orderId, removed.amount(), removed.username());
+    // Check if this was a BUY order - just clear reservation
+    PendingOrder buyOrder = pendingBuyOrders.remove(orderId);
+    if (buyOrder != null) {
+      log.info(
+          "BUY order {} filled. Cleared reservation of {} for user {}",
+          orderId,
+          buyOrder.amount(),
+          buyOrder.username());
+      return;
+    }
+
+    // Check if this was a SELL order - credit the balance
+    PendingOrder sellOrder = pendingSellOrders.remove(orderId);
+    if (sellOrder != null) {
+      addBalance(sellOrder.username(), sellOrder.amount());
+      log.info(
+          "SELL order {} filled. Credited {} to user {}",
+          orderId,
+          sellOrder.amount(),
+          sellOrder.username());
     }
   }
 
   /**
-   * Handle order rejection - refunds the reserved balance.
+   * Handle order rejection - refunds the reserved balance for BUY orders.
    *
-   * <p>Called when an order is REJECTED after balance was reserved.
+   * <p>Called when an order is REJECTED. For BUY orders, refunds the reserved amount. For SELL
+   * orders, just clears tracking (no balance was deducted).
    *
    * @param orderId The order ID
    */
   @Transactional
   public void onOrderRejected(String orderId) {
-    ReservedAmount removed = reservedAmounts.remove(orderId);
-    if (removed != null) {
-      refundBalance(removed.username(), removed.amount());
+    // Check if this was a BUY order - refund the reservation
+    PendingOrder buyOrder = pendingBuyOrders.remove(orderId);
+    if (buyOrder != null) {
+      refundBalance(buyOrder.username(), buyOrder.amount());
       log.info(
-          "Order {} rejected. Refunded {} to user {}", orderId, removed.amount(), removed.username());
+          "BUY order {} rejected. Refunded {} to user {}",
+          orderId,
+          buyOrder.amount(),
+          buyOrder.username());
+      return;
     }
+
+    // Check if this was a SELL order - just clear tracking (no refund needed)
+    PendingOrder sellOrder = pendingSellOrders.remove(orderId);
+    if (sellOrder != null) {
+      log.info(
+          "SELL order {} rejected. Cleared pending credit of {} for user {}",
+          orderId,
+          sellOrder.amount(),
+          sellOrder.username());
+    }
+  }
+
+  /**
+   * Track a pending SELL order for later credit when filled.
+   *
+   * @param orderId The order ID
+   * @param username The username
+   * @param amount The amount to credit when filled (price * quantity)
+   */
+  public void trackSellOrder(String orderId, String username, BigDecimal amount) {
+    pendingSellOrders.put(orderId, new PendingOrder(username, amount));
+    log.info("Tracking SELL order {} for user {}. Will credit {} when filled", orderId, username, amount);
   }
 }

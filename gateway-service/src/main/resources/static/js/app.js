@@ -16,6 +16,9 @@ let orderCounter = 1;
 // Client-side order tracking - stores pending orders by orderId
 const pendingOrders = new Map();
 
+// Track active subscriptions to prevent duplicates
+let activeSubscriptions = [];
+
 // ============================================
 // Reconnection Configuration
 // ============================================
@@ -338,34 +341,55 @@ function doConnect() {
 }
 
 function subscribeToTopics() {
+    // Unsubscribe from any existing subscriptions first
+    unsubscribeAll();
+
     // Subscribe to price updates (broadcast to all)
-    stompClient.subscribe('/topic/prices', function(message) {
+    const priceSub = stompClient.subscribe('/topic/prices', function(message) {
         const price = JSON.parse(message.body);
         onPriceReceived(price);
     });
+    activeSubscriptions.push(priceSub);
     log('Subscribed to /topic/prices');
 
     // Subscribe to personal order confirmations
-    stompClient.subscribe('/user/queue/order-confirmation', function(message) {
+    const confirmSub = stompClient.subscribe('/user/queue/order-confirmation', function(message) {
         const confirmation = JSON.parse(message.body);
         onConfirmationReceived(confirmation);
     });
+    activeSubscriptions.push(confirmSub);
     log('Subscribed to /user/queue/order-confirmation');
 
     // Subscribe to personal error messages
-    stompClient.subscribe('/user/queue/errors', function(message) {
+    const errorSub = stompClient.subscribe('/user/queue/errors', function(message) {
         log('Server error: ' + message.body, 'error');
         showToast('Server Error', message.body, 'error');
     });
+    activeSubscriptions.push(errorSub);
     log('Subscribed to /user/queue/errors');
+}
+
+function unsubscribeAll() {
+    activeSubscriptions.forEach(sub => {
+        try {
+            sub.unsubscribe();
+        } catch (e) {
+            // Subscription may already be invalid
+        }
+    });
+    activeSubscriptions = [];
 }
 
 function disconnect() {
     reconnectState.isManualDisconnect = true;
     cancelReconnect();
 
+    // Clean up subscriptions before disconnecting
+    unsubscribeAll();
+
     if (stompClient !== null) {
         stompClient.disconnect();
+        stompClient = null;
         log('Disconnected from server');
     }
     setConnectionState(ConnectionState.DISCONNECTED);
