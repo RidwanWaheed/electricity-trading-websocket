@@ -80,15 +80,6 @@ public class OrderConsumer {
     orderRepository.save(order);
     log.info("[corr-id={}] Order saved with status PENDING", message.correlationId());
 
-    // Notify Gateway that order is pending (optional - Gateway already knows)
-    // We notify again to confirm Order Service received and processed it
-    statusPublisher.publishStatusUpdate(
-        message.correlationId(),
-        message.orderId(),
-        message.username(),
-        OrderStatus.PENDING,
-        "Order received by Order Service, forwarding to trading engine");
-
     // Forward to Mock M7 for execution
     m7Publisher.publishOrder(order);
     log.info("[corr-id={}] Order forwarded to M7", message.correlationId());
