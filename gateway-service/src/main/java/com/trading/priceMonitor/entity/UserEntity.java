@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/** JPA entity for user accounts with balance management. */
 @Entity
 @Table(name = "users")
 @Getter

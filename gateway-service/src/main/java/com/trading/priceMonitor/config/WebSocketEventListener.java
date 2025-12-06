@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
+/** Logs WebSocket connection and disconnection events. */
 @Component
 public class WebSocketEventListener {
 

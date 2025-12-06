@@ -50,21 +50,16 @@ public class OrderStatusListener {
         message.status(),
         message.username());
 
-    // Handle balance for terminal states
     if (message.status() == OrderStatus.FILLED) {
-      // Order completed successfully - clear the reservation tracking
       balanceService.onOrderFilled(message.orderId());
     } else if (message.status() == OrderStatus.REJECTED) {
-      // Order rejected - refund any reserved balance
       balanceService.onOrderRejected(message.orderId());
     }
 
-    // Convert to WebSocket-friendly format
     OrderConfirmation confirmation =
         new OrderConfirmation(
             message.orderId(), message.status(), message.message(), message.timestamp());
 
-    // Push to the specific user's WebSocket session
     messagingTemplate.convertAndSendToUser(
         message.username(), "/queue/order-confirmation", confirmation);
 

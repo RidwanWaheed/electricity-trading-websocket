@@ -95,7 +95,6 @@ public class BalanceService {
     UserEntity user = userOpt.get();
     if (user.deductBalance(amount)) {
       userRepository.save(user);
-      // Track the reservation for potential refund
       pendingBuyOrders.put(orderId, new PendingOrder(username, amount));
       log.info(
           "Reserved {} from user {} balance for order {}. New balance: {}",
@@ -156,7 +155,6 @@ public class BalanceService {
    * @param orderId The order ID
    */
   public void onOrderFilled(String orderId) {
-    // Check if this was a BUY order - just clear reservation
     PendingOrder buyOrder = pendingBuyOrders.remove(orderId);
     if (buyOrder != null) {
       log.info(
@@ -167,7 +165,6 @@ public class BalanceService {
       return;
     }
 
-    // Check if this was a SELL order - credit the balance
     PendingOrder sellOrder = pendingSellOrders.remove(orderId);
     if (sellOrder != null) {
       addBalance(sellOrder.username(), sellOrder.amount());
@@ -189,7 +186,6 @@ public class BalanceService {
    */
   @Transactional
   public void onOrderRejected(String orderId) {
-    // Check if this was a BUY order - refund the reservation
     PendingOrder buyOrder = pendingBuyOrders.remove(orderId);
     if (buyOrder != null) {
       refundBalance(buyOrder.username(), buyOrder.amount());
@@ -201,7 +197,6 @@ public class BalanceService {
       return;
     }
 
-    // Check if this was a SELL order - just clear tracking (no refund needed)
     PendingOrder sellOrder = pendingSellOrders.remove(orderId);
     if (sellOrder != null) {
       log.info(

@@ -13,18 +13,7 @@ import org.springframework.stereotype.Component;
 /**
  * Listens for price updates from Mock M7 and broadcasts to WebSocket clients.
  *
- * <p>This is the Gateway's role in market data distribution:
- *
- * <ol>
- *   <li>Mock M7 generates prices (simulating exchange)
- *   <li>Gateway receives via RabbitMQ
- *   <li>Gateway broadcasts to all connected WebSocket clients
- * </ol>
- *
- * <p>Message flow: Mock M7 → prices.topic (price.*) → Gateway → WebSocket → Browser
- *
- * <p>Note: Gateway is a pass-through for market data. It doesn't generate or modify prices - it
- * just relays them to clients. This mirrors how real trading systems work.
+ * <p>Message flow: Mock M7 → prices.topic → Gateway → WebSocket → Browser
  */
 @Component
 public class PriceListener {
@@ -56,7 +45,6 @@ public class PriceListener {
         update.price(),
         update.currency());
 
-    // Convert to WebSocket message format (includes area for frontend display)
     ElectricityPrice wsMessage =
         new ElectricityPrice(
             MARKET_AREA,
@@ -66,7 +54,6 @@ public class PriceListener {
             update.changePercent(),
             update.timestamp());
 
-    // Broadcast to all connected WebSocket clients
     messagingTemplate.convertAndSend(WEBSOCKET_PRICES_TOPIC, wsMessage);
   }
 }

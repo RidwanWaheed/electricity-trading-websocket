@@ -12,16 +12,7 @@ spring:
   application:
     name: electricity-trading-websocket
 
-  # ---------------------------------------------------------------------------
-  # Database Configuration (Local Development)
-  # ---------------------------------------------------------------------------
-  # WHY H2 for local dev?
-  #   - No need to install PostgreSQL locally
-  #   - In-memory = fresh database every restart (good for dev)
-  #   - H2 console at http://localhost:8080/h2-console for debugging
-  #
-  # In Docker, application-docker.yml overrides this with PostgreSQL.
-  # ---------------------------------------------------------------------------
+  # Database Configuration (H2 for local dev, PostgreSQL in Docker)
   datasource:
     url: jdbc:h2:mem:tradingdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
@@ -34,15 +25,7 @@ spring:
       enabled: true
       path: /h2-console
 
-  # ---------------------------------------------------------------------------
   # JPA / Hibernate Configuration
-  # ---------------------------------------------------------------------------
-  # WHY these settings?
-  #   - ddl-auto: create-drop = Creates tables on startup, drops on shutdown
-  #     Perfect for development. In production, use 'validate' or 'none'.
-  #   - show-sql: true = See the SQL Hibernate generates (learning!)
-  #   - format_sql: true = Pretty-print the SQL for readability
-  # ---------------------------------------------------------------------------
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -53,30 +36,14 @@ spring:
     # For H2, use H2 dialect. Docker profile overrides with PostgreSQL dialect.
     database-platform: org.hibernate.dialect.H2Dialect
 
-  # ---------------------------------------------------------------------------
   # RabbitMQ Configuration (Local Development)
-  # ---------------------------------------------------------------------------
-  # Connects to RabbitMQ running in Docker (docker-compose up -d rabbitmq)
-  # Default credentials: guest/guest (only works from localhost)
-  # ---------------------------------------------------------------------------
   rabbitmq:
     host: localhost
     port: 5672
     username: guest
     password: guest
 
-# ---------------------------------------------------------------------------
 # Actuator Configuration
-# ---------------------------------------------------------------------------
-# WHY expose these endpoints?
-#   - health: Docker HEALTHCHECK uses this
-#   - info: Useful metadata about your app
-#   - metrics: Performance data (requests/sec, memory, etc.)
-#
-# WHY show-details: always?
-#   - Health check shows database status, disk space, etc.
-#   - In production, use 'when_authorized' for security
-# ---------------------------------------------------------------------------
 management:
   endpoints:
     web:
@@ -86,14 +53,7 @@ management:
     health:
       show-details: always
 
-# ---------------------------------------------------------------------------
 # Logging Configuration
-# ---------------------------------------------------------------------------
-# WHY these log levels?
-#   - DEBUG for our code = see what's happening
-#   - WARN for Spring/Hibernate = reduce noise
-#   - Adjust as needed during debugging
-# ---------------------------------------------------------------------------
 logging:
   level:
     com.trading: DEBUG

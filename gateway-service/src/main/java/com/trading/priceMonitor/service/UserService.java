@@ -7,6 +7,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Service for user account management.
+ *
+ * <p>Handles user creation, lookup, and password verification.
+ */
 @Service
 public class UserService {
 

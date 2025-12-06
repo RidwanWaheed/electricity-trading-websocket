@@ -9,8 +9,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * <p>Handles WebSocket connections, REST API, authentication, and routes messages between clients
  * and backend services via RabbitMQ.
  *
- * <p>Note: Price generation moved to Mock M7 Service. Gateway now receives prices via RabbitMQ and
- * forwards to WebSocket clients.
+ * <p>Gateway receives prices via RabbitMQ and forwards to WebSocket clients.
  */
 @SpringBootApplication
 public class ElectricityPriceMonitorApplication {

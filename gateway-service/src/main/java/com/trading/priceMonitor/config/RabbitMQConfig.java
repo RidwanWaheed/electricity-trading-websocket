@@ -26,8 +26,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-  // ===== EXCHANGES =====
-
   /** Exchange for order messages */
   @Bean
   public TopicExchange ordersExchange() {
@@ -40,8 +38,6 @@ public class RabbitMQConfig {
     return new TopicExchange(PRICES_EXCHANGE);
   }
 
-  // ===== QUEUES =====
-
   /** Queue for order status updates from Order Service */
   @Bean
   public Queue orderStatusQueue() {
@@ -53,8 +49,6 @@ public class RabbitMQConfig {
   public Queue pricesQueue() {
     return QueueBuilder.durable(QUEUE_PRICES).build();
   }
-
-  // ===== BINDINGS =====
 
   /** Bind order status queue - receives all user status updates */
   @Bean
@@ -70,8 +64,6 @@ public class RabbitMQConfig {
     // price.* matches price.NORTH, price.SOUTH, etc.
     return BindingBuilder.bind(pricesQueue).to(pricesExchange).with(ROUTING_PRICE_WILDCARD);
   }
-
-  // ===== MESSAGE CONVERTER =====
 
   @Bean
   public MessageConverter jsonMessageConverter() {

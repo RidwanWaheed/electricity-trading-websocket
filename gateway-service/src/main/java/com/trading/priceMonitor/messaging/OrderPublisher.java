@@ -24,11 +24,6 @@ public class OrderPublisher {
     this.rabbitTemplate = rabbitTemplate;
   }
 
-  /**
-   * Publishes an order to the Order Service via RabbitMQ.
-   *
-   * @param message The order submission message with correlation ID
-   */
   public void publish(OrderSubmitMessage message) {
     log.info(
         "[corr-id={}] Publishing order to Order Service: orderId={}, user={}",

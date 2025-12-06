@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+/** Creates default users on startup if the database is empty. */
 @Component
 public class DataInitializer implements CommandLineRunner {
 
