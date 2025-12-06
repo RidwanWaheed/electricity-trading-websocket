@@ -43,45 +43,43 @@ For a solo developer or small team with a simple domain, a monolith is often the
 
 ## Service Responsibilities
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              EXTERNAL BOUNDARY                                   │
-├─────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                  │
-│  ┌─────────────┐                      ┌─────────────────────────────────────┐   │
-│  │   Browser   │◄────WebSocket/REST───►│            GATEWAY                  │   │
-│  │  (Client)   │                       │  • WebSocket endpoint               │   │
-│  └─────────────┘                       │  • REST API (auth, orders)          │   │
-│                                        │  • JWT authentication               │   │
-│                                        │  • Static file serving              │   │
-│                                        │  • Request routing                  │   │
-│                                        └──────────────┬──────────────────────┘   │
-│                                                       │                          │
-├───────────────────────────────────────────────────────┼──────────────────────────┤
-│                              INTERNAL BOUNDARY        │                          │
-│                                                       ▼                          │
-│                                        ┌──────────────────────────┐              │
-│                                        │        RabbitMQ          │              │
-│                                        │   (Message Broker)       │              │
-│                                        └──────────────────────────┘              │
-│                                           │                  │                   │
-│                              ┌────────────┘                  └────────────┐      │
-│                              ▼                                            ▼      │
-│               ┌──────────────────────────┐              ┌──────────────────────┐ │
-│               │      ORDER SERVICE       │              │       MOCK M7        │ │
-│               │  • Order validation      │◄─────────────►  • Price generation  │ │
-│               │  • State machine         │   RabbitMQ   │  • Order execution   │ │
-│               │  • PostgreSQL persistence│              │  • Market simulation │ │
-│               └──────────────────────────┘              └──────────────────────┘ │
-│                              │                                                   │
-│                              ▼                                                   │
-│               ┌──────────────────────────┐                                       │
-│               │       PostgreSQL         │                                       │
-│               │  • Users table           │                                       │
-│               │  • Orders table          │                                       │
-│               └──────────────────────────┘                                       │
-│                                                                                  │
-└─────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph external["External Boundary"]
+        Browser["Browser (Client)"]
+    end
+
+    subgraph gateway["Gateway :8080"]
+        WS["WebSocket Endpoint"]
+        REST["REST API"]
+        JWT["JWT Auth"]
+        Static["Static Files"]
+    end
+
+    subgraph internal["Internal Boundary"]
+        RabbitMQ["RabbitMQ (Message Broker)"]
+
+        subgraph order["Order Service :8081"]
+            Validation["Order Validation"]
+            StateMachine["State Machine"]
+            Persistence["PostgreSQL"]
+        end
+
+        subgraph m7["Mock M7 :8082"]
+            PriceGen["Price Generation"]
+            OrderExec["Order Execution"]
+            MarketSim["Market Simulation"]
+        end
+
+        PostgreSQL[(PostgreSQL)]
+    end
+
+    Browser <-->|"WebSocket/REST"| gateway
+    gateway <-->|"RabbitMQ"| RabbitMQ
+    RabbitMQ <-->|"order.submit/status"| order
+    RabbitMQ <-->|"m7.order/ack/fill"| m7
+    order <-->|"RabbitMQ"| m7
+    order --> PostgreSQL
 ```
 
 ### Gateway Service (Port 8080)
@@ -106,7 +104,7 @@ The **Order Service** owns all order-related business logic and data.
 
 **Responsibilities:**
 - Order validation (quantity, price, region)
-- Order state machine (PENDING → SUBMITTED → FILLED/REJECTED)
+- Order state machine (PENDING -> SUBMITTED -> FILLED/REJECTED)
 - PostgreSQL persistence
 - Communicates with Mock M7 for order execution
 
@@ -129,45 +127,41 @@ Simulates the **EPEX SPOT M7 trading engine**.
 
 ### Order Submission Flow
 
-```
-Browser                Gateway              Order Service           Mock M7
-   │                      │                      │                     │
-   │  1. STOMP message    │                      │                     │
-   │  /app/order          │                      │                     │
-   ├─────────────────────►│                      │                     │
-   │                      │  2. order.submit     │                     │
-   │                      ├─────────────────────►│                     │
-   │                      │                      │  3. m7.order        │
-   │                      │                      ├────────────────────►│
-   │                      │                      │                     │
-   │                      │                      │  4. m7.ack          │
-   │                      │  5. order.status     │◄────────────────────┤
-   │  6. /user/queue/     │◄─────────────────────┤     (SUBMITTED)     │
-   │     confirmation     │                      │                     │
-   │◄─────────────────────┤                      │                     │
-   │                      │                      │  7. m7.fill         │
-   │                      │  8. order.status     │◄────────────────────┤
-   │  9. /user/queue/     │◄─────────────────────┤     (FILLED)        │
-   │     confirmation     │                      │                     │
-   │◄─────────────────────┤                      │                     │
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant G as Gateway
+    participant O as Order Service
+    participant M as Mock M7
+
+    B->>G: 1. STOMP /app/order
+    G->>O: 2. order.submit (RabbitMQ)
+    O->>M: 3. m7.order (RabbitMQ)
+    M-->>O: 4. m7.ack (immediate)
+    O-->>G: 5. order.status (SUBMITTED)
+    G-->>B: 6. /user/queue/confirmation
+
+    Note over M: ~1 second delay
+
+    M-->>O: 7. m7.fill
+    O-->>G: 8. order.status (FILLED)
+    G-->>B: 9. /user/queue/confirmation
 ```
 
 ### Price Broadcasting Flow
 
-```
-Mock M7                  RabbitMQ              Gateway              Browsers
-   │                        │                     │                    │
-   │  1. Generate price     │                     │                    │
-   │  (every 2 seconds)     │                     │                    │
-   │                        │                     │                    │
-   │  2. price.update       │                     │                    │
-   ├───────────────────────►│                     │                    │
-   │                        │  3. Deliver         │                    │
-   │                        ├────────────────────►│                    │
-   │                        │                     │  4. Broadcast to   │
-   │                        │                     │     /topic/prices  │
-   │                        │                     ├───────────────────►│
-   │                        │                     │  (all subscribers) │
+```mermaid
+sequenceDiagram
+    participant M as Mock M7
+    participant R as RabbitMQ
+    participant G as Gateway
+    participant B as Browsers
+
+    loop Every 2 seconds
+        M->>R: price.update
+        R->>G: Deliver message
+        G->>B: Broadcast to /topic/prices
+    end
 ```
 
 ### RabbitMQ Routing Keys
@@ -189,13 +183,18 @@ Mock M7                  RabbitMQ              Gateway              Browsers
 
 **Where:** Order lifecycle management in Order Service
 
-**Problem:** Orders go through multiple states (PENDING → SUBMITTED → FILLED/REJECTED). Invalid transitions must be prevented.
+**Problem:** Orders go through multiple states (PENDING -> SUBMITTED -> FILLED/REJECTED). Invalid transitions must be prevented.
 
-**Solution:** Explicit state enum with validated transitions. The service rejects any attempt to transition to an invalid state (e.g., PENDING → FILLED).
+**Solution:** Explicit state enum with validated transitions. The service rejects any attempt to transition to an invalid state (e.g., PENDING -> FILLED).
 
-```
-PENDING ──► SUBMITTED ──► FILLED
-                      └──► REJECTED
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING
+    PENDING --> SUBMITTED
+    SUBMITTED --> FILLED
+    SUBMITTED --> REJECTED
+    FILLED --> [*]
+    REJECTED --> [*]
 ```
 
 ### 2. Observer Pattern (Publish-Subscribe)
@@ -206,10 +205,12 @@ PENDING ──► SUBMITTED ──► FILLED
 
 **Solution:** Topic-based pub/sub through STOMP and RabbitMQ. Clients subscribe to `/topic/prices` and automatically receive all broadcasts.
 
-```
-                    ┌─► Browser 1
-Publisher ──► Topic ├─► Browser 2
-                    └─► Browser 3
+```mermaid
+flowchart LR
+    Publisher --> Topic
+    Topic --> Browser1
+    Topic --> Browser2
+    Topic --> Browser3
 ```
 
 ### 3. API Gateway Pattern
@@ -218,15 +219,16 @@ Publisher ──► Topic ├─► Browser 2
 
 **Problem:** Clients need a single entry point. Internal services shouldn't be exposed directly.
 
-**Solution:** Gateway acts as the single entry point, handling authentication, request routing, and protocol translation (WebSocket ↔ RabbitMQ).
+**Solution:** Gateway acts as the single entry point, handling authentication, request routing, and protocol translation (WebSocket <-> RabbitMQ).
 
-```
-        ┌──────────────────────────────────────┐
-        │              Gateway                  │
-Browser │  ┌─────────┐  ┌─────────┐  ┌───────┐ │
-   ─────┼──► Auth    ├──► Router  ├──► Trans │──┼──► Internal Services
-        │  └─────────┘  └─────────┘  └───────┘ │
-        └──────────────────────────────────────┘
+```mermaid
+flowchart LR
+    Browser --> Auth
+    subgraph Gateway
+        Auth --> Router
+        Router --> Translator
+    end
+    Translator --> Services["Internal Services"]
 ```
 
 ### 4. Message Queue Pattern (Async Messaging)
@@ -253,9 +255,10 @@ Browser │  ┌─────────┐  ┌─────────�
 
 **Solution:** Gateway acts as a proxy, forwarding authenticated requests to Order Service and returning responses to the client.
 
-```
-Browser ──► Gateway (proxy) ──► Order Service
-           /api/orders/history   /api/orders/history/{username}
+```mermaid
+flowchart LR
+    Browser -->|"/api/orders/history"| Gateway
+    Gateway -->|"/api/orders/history/{username}"| OrderService["Order Service"]
 ```
 
 ### 7. Filter Chain Pattern
@@ -266,8 +269,12 @@ Browser ──► Gateway (proxy) ──► Order Service
 
 **Solution:** Chain of filters that each request passes through. JWT filter validates tokens before the request reaches controllers.
 
-```
-Request ──► CORS Filter ──► JWT Filter ──► Auth Filter ──► Controller
+```mermaid
+flowchart LR
+    Request --> CORS["CORS Filter"]
+    CORS --> JWT["JWT Filter"]
+    JWT --> Auth["Auth Filter"]
+    Auth --> Controller
 ```
 
 ### 8. Repository Pattern
@@ -284,36 +291,36 @@ Request ──► CORS Filter ──► JWT Filter ──► Auth Filter ──�
 
 ### JWT Authentication Flow
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                         AUTHENTICATION FLOW                             │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  1. LOGIN                                                               │
-│  ┌────────┐  POST /api/auth/login  ┌─────────┐  Generate  ┌─────────┐  │
-│  │Browser │ ──────────────────────►│ Gateway │ ──────────►│   JWT   │  │
-│  │        │  {username, password}  │         │   Token    │ Service │  │
-│  │        │◄────────────────────── │         │◄────────── │         │  │
-│  └────────┘     {token: "..."}     └─────────┘            └─────────┘  │
-│       │                                                                 │
-│       │ Store in localStorage                                           │
-│       ▼                                                                 │
-│  2. WEBSOCKET CONNECTION                                                │
-│  ┌────────┐  CONNECT + token       ┌─────────┐  Validate  ┌─────────┐  │
-│  │Browser │ ──────────────────────►│ Gateway │ ──────────►│   JWT   │  │
-│  │        │  Authorization header  │         │   Token    │ Service │  │
-│  │        │◄────────────────────── │         │◄────────── │         │  │
-│  └────────┘     CONNECTED          └─────────┘   Valid    └─────────┘  │
-│       │                                                                 │
-│       ▼                                                                 │
-│  3. API REQUESTS                                                        │
-│  ┌────────┐  GET /api/orders       ┌─────────┐  Validate  ┌─────────┐  │
-│  │Browser │ ──────────────────────►│   JWT   │ ──────────►│   JWT   │  │
-│  │        │  Authorization: Bearer │ Filter  │   Token    │ Service │  │
-│  │        │◄────────────────────── │         │◄────────── │         │  │
-│  └────────┘     [order data]       └─────────┘   Valid    └─────────┘  │
-│                                                                         │
-└────────────────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant G as Gateway
+    participant J as JWT Service
+
+    rect rgb(200, 220, 240)
+        Note over B,J: 1. LOGIN
+        B->>G: POST /api/auth/login {username, password}
+        G->>J: Generate Token
+        J-->>G: JWT Token
+        G-->>B: {token: "..."}
+        Note over B: Store in localStorage
+    end
+
+    rect rgb(200, 240, 220)
+        Note over B,J: 2. WEBSOCKET CONNECTION
+        B->>G: CONNECT + Authorization header
+        G->>J: Validate Token
+        J-->>G: Valid
+        G-->>B: CONNECTED
+    end
+
+    rect rgb(240, 220, 200)
+        Note over B,J: 3. API REQUESTS
+        B->>G: GET /api/orders + Bearer token
+        G->>J: Validate Token
+        J-->>G: Valid
+        G-->>B: [order data]
+    end
 ```
 
 ### Security Layers

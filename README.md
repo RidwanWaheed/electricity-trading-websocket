@@ -20,14 +20,13 @@ This repository serves as a hands-on learning project to understand WebSocket/ST
 
 ## Architecture
 
-```
-┌─────────┐    WebSocket    ┌─────────┐    RabbitMQ    ┌───────────────┐    RabbitMQ    ┌─────────┐
-│ Browser │◄───────────────►│ Gateway │◄──────────────►│ Order Service │◄──────────────►│ Mock M7 │
-└─────────┘                 └────┬────┘                └───────┬───────┘                └─────────┘
-                                 │                             │
-                                 │        ┌──────────┐         │
-                                 └───────►│ Postgres │◄────────┘
-                                          └──────────┘
+```mermaid
+flowchart LR
+    Browser <-->|WebSocket| Gateway
+    Gateway <-->|RabbitMQ| OrderService[Order Service]
+    OrderService <-->|RabbitMQ| MockM7[Mock M7]
+    Gateway --> PostgreSQL[(PostgreSQL)]
+    OrderService --> PostgreSQL
 ```
 
 | Service | Port | Description |
@@ -104,28 +103,28 @@ make run-m7       # Run Mock M7 in terminal 3
 
 ## Order Lifecycle
 
-```
-Browser          Gateway          Order Service       Mock M7
-   │                │                   │                │
-   │  Submit Order  │                   │                │
-   ├───────────────►│                   │                │
-   │                │  order.submit     │                │
-   │                ├──────────────────►│                │
-   │                │                   │  m7.order      │
-   │                │                   ├───────────────►│
-   │                │                   │                │
-   │                │                   │  m7.ack        │ (immediate)
-   │                │   order.status    │◄───────────────┤
-   │  SUBMITTED     │◄──────────────────┤                │
-   │◄───────────────┤                   │                │
-   │                │                   │                │
-   │                │                   │  m7.fill       │ (after ~1s)
-   │                │   order.status    │◄───────────────┤
-   │  FILLED        │◄──────────────────┤                │
-   │◄───────────────┤                   │                │
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant G as Gateway
+    participant O as Order Service
+    participant M as Mock M7
+
+    B->>G: Submit Order
+    G->>O: order.submit
+    O->>M: m7.order
+    M-->>O: m7.ack (immediate)
+    O-->>G: order.status (SUBMITTED)
+    G-->>B: SUBMITTED
+
+    Note over M: ~1 second delay
+
+    M-->>O: m7.fill
+    O-->>G: order.status (FILLED)
+    G-->>B: FILLED
 ```
 
-**States:** `PENDING` → `SUBMITTED` → `FILLED` | `REJECTED`
+**States:** `PENDING` -> `SUBMITTED` -> `FILLED` | `REJECTED`
 
 ## CI/CD
 
