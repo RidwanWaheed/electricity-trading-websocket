@@ -626,6 +626,14 @@ h1, h2, h3, h4 {
     color: var(--accent-success);
 }
 
+.system-log__entry--warning {
+    color: #facc15; /* Yellow - for SUBMITTED */
+}
+
+.system-log__entry--pending {
+    color: #f97316; /* Orange - for PENDING */
+}
+
 .system-log__timestamp {
     color: #4b5563;
     margin-right: var(--spacing-sm);
@@ -810,20 +818,59 @@ h1, h2, h3, h4 {
 }
 
 .order-history__status-dot--pending {
-    background-color: var(--accent-warning);
+    background-color: #f97316; /* Orange */
+}
+
+.order-history__status-dot--submitted {
+    background-color: #facc15; /* Yellow */
 }
 
 .order-history__status-dot--filled {
-    background-color: var(--accent-success);
+    background-color: var(--accent-success); /* Green */
 }
 
 .order-history__status-dot--rejected {
-    background-color: var(--accent-danger);
+    background-color: var(--accent-danger); /* Red */
 }
 
 .order-history__status-text {
     font-size: 0.75rem;
     color: var(--text-secondary);
+}
+
+.order-history__status--has-tooltip {
+    cursor: help;
+    position: relative;
+}
+
+.order-history__status--has-tooltip:hover .order-history__status-text {
+    text-decoration: underline dotted;
+}
+
+/* Custom tooltip for rejected orders */
+.order-history__status--has-tooltip::after {
+    content: attr(data-reason);
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    z-index: 100;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    margin-bottom: 4px;
+}
+
+.order-history__status--has-tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
 }
 
 /* Empty State */
