@@ -29,19 +29,10 @@ public class StatusPublisher {
     this.rabbitTemplate = rabbitTemplate;
   }
 
-  /**
-   * Notify Gateway (and ultimately the user) of an order status change.
-   *
-   * @param correlationId Correlation ID for distributed tracing
-   * @param orderId The order that changed
-   * @param username The user to notify
-   * @param status New status
-   * @param message Human-readable status message
-   */
+  /** Notify Gateway (and ultimately the user) of an order status change. */
   public void publishStatusUpdate(
       String correlationId, String orderId, String username, OrderStatus status, String message) {
 
-    // Build routing key with username for user-specific delivery
     String routingKey = String.format(ROUTING_ORDER_STATUS_PATTERN, username);
 
     OrderStatusMessage statusMessage =

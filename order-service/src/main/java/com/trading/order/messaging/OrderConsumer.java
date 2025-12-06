@@ -55,7 +55,6 @@ public class OrderConsumer {
         message.orderId(),
         message.username());
 
-    // Validate the order
     if (!isValidOrder(message)) {
       log.warn("[corr-id={}] Order validation failed", message.correlationId());
       statusPublisher.publishStatusUpdate(
@@ -67,7 +66,6 @@ public class OrderConsumer {
       return;
     }
 
-    // Create and save the order entity
     OrderEntity order =
         new OrderEntity(
             message.orderId(),
@@ -81,7 +79,6 @@ public class OrderConsumer {
     orderRepository.save(order);
     log.info("[corr-id={}] Order saved with status PENDING", message.correlationId());
 
-    // Forward to Mock M7 for execution
     m7Publisher.publishOrder(order);
     log.info("[corr-id={}] Order forwarded to M7", message.correlationId());
   }

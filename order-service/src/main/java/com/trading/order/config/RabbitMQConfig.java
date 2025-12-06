@@ -28,8 +28,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-  // ===== EXCHANGES =====
-
   /** Exchange for order flow (Gateway ↔ Order Service) */
   @Bean
   public TopicExchange ordersExchange() {
@@ -42,13 +40,7 @@ public class RabbitMQConfig {
     return new TopicExchange(M7_EXCHANGE);
   }
 
-  // ===== QUEUES =====
-
-  /**
-   * Queue for receiving orders from Gateway.
-   *
-   * <p>Why durable? So messages survive RabbitMQ restarts.
-   */
+  /** Queue for receiving orders from Gateway (durable). */
   @Bean
   public Queue orderSubmissionsQueue() {
     return QueueBuilder.durable(QUEUE_ORDER_SUBMISSIONS).build();
@@ -74,8 +66,6 @@ public class RabbitMQConfig {
     return QueueBuilder.durable(QUEUE_M7_FILL).build();
   }
 
-  // ===== BINDINGS =====
-
   /** Bind order submissions queue to orders exchange */
   @Bean
   public Binding orderSubmissionsBinding(
@@ -94,8 +84,6 @@ public class RabbitMQConfig {
   public Binding m7FillBinding(Queue m7FillQueue, TopicExchange m7Exchange) {
     return BindingBuilder.bind(m7FillQueue).to(m7Exchange).with(ROUTING_M7_FILL);
   }
-
-  // ===== MESSAGE CONVERTER =====
 
   @Bean
   public MessageConverter jsonMessageConverter() {

@@ -28,11 +28,6 @@ public class M7Publisher {
     this.rabbitTemplate = rabbitTemplate;
   }
 
-  /**
-   * Send an order to Mock M7 for execution.
-   *
-   * @param order The order entity to send
-   */
   public void publishOrder(OrderEntity order) {
     M7OrderRequest request =
         new M7OrderRequest(
