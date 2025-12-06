@@ -5,6 +5,15 @@ import com.trading.priceMonitor.entity.UserEntity;
 import com.trading.priceMonitor.security.JwtService;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service handling user authentication and registration.
+ *
+ * <p>Coordinates between UserService (credential verification) and JwtService (token generation) to
+ * provide a clean authentication API for the controller layer.
+ *
+ * <p>Returns AuthResult which encapsulates success/failure states, avoiding exceptions for normal
+ * authentication failures (e.g., wrong password).
+ */
 @Service
 public class AuthService {
 
@@ -16,6 +25,13 @@ public class AuthService {
     this.jwtService = jwtService;
   }
 
+  /**
+   * Authenticates a user with username and password.
+   *
+   * @param username The username
+   * @param password The plaintext password
+   * @return AuthResult with JWT token on success, or error message on failure
+   */
   public AuthResult authenticate(String username, String password) {
     var userOptional = userService.findByUsername(username);
 
@@ -33,6 +49,13 @@ public class AuthService {
     return AuthResult.success(token, user.getUsername(), user.getBalance().toString());
   }
 
+  /**
+   * Registers a new user account.
+   *
+   * @param username The desired username
+   * @param password The plaintext password (will be hashed)
+   * @return AuthResult with JWT token on success, or error message if username taken
+   */
   public AuthResult register(String username, String password) {
     try {
       UserEntity user = userService.createUser(username, password);

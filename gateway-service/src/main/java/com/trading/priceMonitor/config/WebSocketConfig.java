@@ -12,6 +12,27 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+/**
+ * WebSocket and STOMP messaging configuration.
+ *
+ * <p>Configures the WebSocket infrastructure for real-time communication:
+ *
+ * <ul>
+ *   <li>STOMP endpoints for browser connections (SockJS fallback) and native clients
+ *   <li>Message broker for pub/sub messaging (/topic) and user-specific queues (/queue)
+ *   <li>Heartbeat mechanism to detect stale connections (10s intervals)
+ *   <li>JWT authentication via handshake interceptor
+ * </ul>
+ *
+ * <p>Client destinations:
+ *
+ * <ul>
+ *   <li>/topic/prices - broadcast price updates to all subscribers
+ *   <li>/user/queue/order-confirmation - user-specific order status updates
+ *   <li>/user/queue/errors - user-specific error messages
+ *   <li>/app/order - client sends orders here (routed to OrderController)
+ * </ul>
+ */
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {

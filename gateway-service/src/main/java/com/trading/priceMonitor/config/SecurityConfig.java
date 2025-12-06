@@ -11,6 +11,28 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Spring Security configuration for the Gateway service.
+ *
+ * <p>Configures stateless JWT-based authentication:
+ *
+ * <ul>
+ *   <li>CSRF disabled (stateless API, tokens provide protection)
+ *   <li>Session management set to STATELESS (no server-side sessions)
+ *   <li>JWT filter validates tokens on protected endpoints
+ * </ul>
+ *
+ * <p>Public endpoints (no authentication required):
+ *
+ * <ul>
+ *   <li>Static resources (/, /index.html, /css/**, /js/**)
+ *   <li>Authentication endpoints (/api/auth/**)
+ *   <li>WebSocket endpoints (/ws/**, /ws-electricity/**, /ws-plain/**)
+ *   <li>Health check endpoints (/actuator/health, /actuator/info)
+ * </ul>
+ *
+ * <p>All other endpoints require a valid JWT token in the Authorization header.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
