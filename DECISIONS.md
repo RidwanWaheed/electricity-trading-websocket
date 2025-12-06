@@ -134,3 +134,23 @@ Key technical decisions made during development.
 - Gateway becomes a pass-through, not a source of truth
 - Teaches realistic market data distribution pattern
 - Mock M7 publishes to `prices.topic`, Gateway subscribes and forwards to WebSocket
+
+---
+
+## ADR-012: JWT in localStorage (Development Trade-off)
+
+**Decision:** Store JWT tokens in localStorage for this learning project.
+
+**Rationale:**
+- Simple to implement and debug (visible in DevTools)
+- Works well for demonstrating token-based auth flow
+- Acceptable for learning project with no real user data
+
+**Trade-offs acknowledged:**
+- Vulnerable to XSS (any JS on page can read token)
+- No automatic CSRF protection
+
+**Production alternative:**
+- `httpOnly` cookies (JS can't access, browser sends automatically)
+- Short-lived access tokens (15 min) + refresh tokens
+- Token revocation on logout (requires Redis/database blacklist)
