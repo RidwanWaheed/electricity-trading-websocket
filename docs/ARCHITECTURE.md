@@ -7,7 +7,6 @@ This document explains the architectural decisions, design patterns, and system 
 - [Service Responsibilities](#service-responsibilities)
 - [Message Flow](#message-flow)
 - [Design Patterns](#design-patterns)
-- [Security Architecture](#security-architecture)
 - [Technology Choices](#technology-choices)
 
 ---
@@ -284,53 +283,6 @@ flowchart LR
 **Problem:** Business logic shouldn't contain SQL queries or know about database specifics.
 
 **Solution:** Repository interface abstracts data access. Spring Data JPA implements the interface automatically from method names.
-
----
-
-## Security Architecture
-
-### JWT Authentication Flow
-
-```mermaid
-sequenceDiagram
-    participant B as Browser
-    participant G as Gateway
-    participant J as JWT Service
-
-    rect rgb(200, 220, 240)
-        Note over B,J: 1. LOGIN
-        B->>G: POST /api/auth/login {username, password}
-        G->>J: Generate Token
-        J-->>G: JWT Token
-        G-->>B: {token: "..."}
-        Note over B: Store in localStorage
-    end
-
-    rect rgb(200, 240, 220)
-        Note over B,J: 2. WEBSOCKET CONNECTION
-        B->>G: CONNECT + Authorization header
-        G->>J: Validate Token
-        J-->>G: Valid
-        G-->>B: CONNECTED
-    end
-
-    rect rgb(240, 220, 200)
-        Note over B,J: 3. API REQUESTS
-        B->>G: GET /api/orders + Bearer token
-        G->>J: Validate Token
-        J-->>G: Valid
-        G-->>B: [order data]
-    end
-```
-
-### Security Layers
-
-| Layer | Mechanism | Purpose |
-|-------|-----------|---------|
-| Transport | HTTPS (production) | Encrypt data in transit |
-| Authentication | JWT tokens | Verify user identity |
-| Authorization | Spring Security | Control access to endpoints |
-| Session | Stateless | No server-side session storage |
 
 ---
 

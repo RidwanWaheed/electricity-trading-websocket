@@ -644,24 +644,25 @@ function onConfirmationReceived(confirmation) {
     let toastType;
     let toastTitle;
 
+    // Only show toasts for terminal states (FILLED, REJECTED)
+    // Intermediate states (PENDING, SUBMITTED) just update the UI silently
+    let showToastNotification = false;
+
     switch (status) {
         case 'PENDING':
             historyStatus = 'pending';
             logType = 'pending';      // Orange
-            toastType = 'info';
-            toastTitle = 'Order PENDING';
             break;
         case 'SUBMITTED':
             historyStatus = 'submitted';
             logType = 'warning';      // Yellow
-            toastType = 'info';
-            toastTitle = 'Order SUBMITTED';
             break;
         case 'FILLED':
             historyStatus = 'filled';
             logType = 'success';      // Green
             toastType = 'success';
             toastTitle = 'Order FILLED';
+            showToastNotification = true;
             // Order complete - remove from pending
             pendingOrders.delete(confirmation.orderId);
             // Refresh balance after order is filled
@@ -672,6 +673,7 @@ function onConfirmationReceived(confirmation) {
             logType = 'error';        // Red
             toastType = 'error';
             toastTitle = 'Order REJECTED';
+            showToastNotification = true;
             // Order complete - remove from pending
             pendingOrders.delete(confirmation.orderId);
             // Refresh balance (may be refunded for rejected BUY orders)
@@ -680,8 +682,6 @@ function onConfirmationReceived(confirmation) {
         default:
             historyStatus = 'pending';
             logType = 'info';
-            toastType = 'info';
-            toastTitle = `Order ${status}`;
     }
 
     // Include rejection reason in log if available
@@ -694,12 +694,14 @@ function onConfirmationReceived(confirmation) {
     const reason = status === 'REJECTED' ? confirmation.message : null;
     updateOrderStatus(confirmation.orderId, historyStatus, reason);
 
-    // Show toast notification
-    const toastMessage = order
-        ? `${order.type} ${order.quantity} MWh @ ${order.price.toFixed(2)} EUR/MWh (${order.region})`
-        : confirmation.message || confirmation.orderId;
+    // Show toast notification only for terminal states
+    if (showToastNotification) {
+        const toastMessage = order
+            ? `${order.type} ${order.quantity} MWh @ ${order.price.toFixed(2)} EUR/MWh (${order.region})`
+            : confirmation.message || confirmation.orderId;
 
-    showToast(toastTitle, toastMessage, toastType);
+        showToast(toastTitle, toastMessage, toastType);
+    }
 }
 
 function updatePriceTable() {
