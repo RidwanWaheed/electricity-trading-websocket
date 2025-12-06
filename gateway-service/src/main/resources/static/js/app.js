@@ -32,7 +32,8 @@ const reconnectConfig = {
 let reconnectState = {
     attempts: 0,
     timeoutId: null,
-    isManualDisconnect: false
+    isManualDisconnect: false,
+    gaveUp: false  // Prevents restarting reconnect cycle after max attempts
 };
 
 // ============================================
@@ -290,6 +291,7 @@ function connect() {
     // Reset reconnect state on manual connect
     reconnectState.isManualDisconnect = false;
     reconnectState.attempts = 0;
+    reconnectState.gaveUp = false;
     cancelReconnect();
 
     doConnect();
@@ -329,12 +331,13 @@ function doConnect() {
     }, function(error) {
         log('Connection error: ' + error, 'error');
         setConnectionState(ConnectionState.DISCONNECTED);
-        handleConnectionError();
+        // Don't call handleConnectionError here - let socket.onclose handle it
+        // to avoid double-triggering
     });
 
     // Handle unexpected disconnection via SockJS close event
     socket.onclose = function() {
-        if (!reconnectState.isManualDisconnect && jwtToken) {
+        if (!reconnectState.isManualDisconnect && jwtToken && !reconnectState.gaveUp) {
             handleConnectionError();
         }
     };
@@ -399,8 +402,8 @@ function disconnect() {
 // Reconnection Logic
 // ============================================
 function handleConnectionError() {
-    // Don't reconnect if manually disconnected or logged out
-    if (reconnectState.isManualDisconnect || !jwtToken) {
+    // Don't reconnect if manually disconnected, logged out, or already gave up
+    if (reconnectState.isManualDisconnect || !jwtToken || reconnectState.gaveUp) {
         return;
     }
 
@@ -409,7 +412,7 @@ function handleConnectionError() {
         log(`Max reconnection attempts (${reconnectConfig.maxAttempts}) reached. Giving up.`, 'error');
         showToast('Connection Lost', 'Unable to reconnect. Please try manually.', 'error');
         setConnectionState(ConnectionState.DISCONNECTED, 'Connection lost');
-        reconnectState.attempts = 0;
+        reconnectState.gaveUp = true;  // Prevent further reconnect attempts
         return;
     }
 

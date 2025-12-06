@@ -39,8 +39,7 @@ public class OrderHistoryController {
    */
   @GetMapping("/history/{username}")
   public ResponseEntity<List<OrderHistoryResponse>> getOrderHistory(
-      @PathVariable String username,
-      @RequestParam(defaultValue = "20") int limit) {
+      @PathVariable String username, @RequestParam(defaultValue = "20") int limit) {
 
     log.info("Fetching order history for user: {}, limit: {}", username, limit);
 

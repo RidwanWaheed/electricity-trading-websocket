@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Handles balance checks for order submissions and balance updates on order fills.
  *
  * <p>Tracks:
+ *
  * <ul>
  *   <li>BUY orders: Reserved amounts that can be refunded if rejected
  *   <li>SELL orders: Pending credits to be added when filled
@@ -33,14 +34,16 @@ public class BalanceService {
    *
    * <p>Key: orderId, Value: PendingOrder (username + amount)
    */
-  private final ConcurrentHashMap<String, PendingOrder> pendingBuyOrders = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, PendingOrder> pendingBuyOrders =
+      new ConcurrentHashMap<>();
 
   /**
    * Tracks pending SELL orders waiting for fill to credit balance.
    *
    * <p>Key: orderId, Value: PendingOrder (username + amount)
    */
-  private final ConcurrentHashMap<String, PendingOrder> pendingSellOrders = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, PendingOrder> pendingSellOrders =
+      new ConcurrentHashMap<>();
 
   public BalanceService(UserRepository userRepository) {
     this.userRepository = userRepository;
@@ -125,7 +128,11 @@ public class BalanceService {
             user -> {
               user.addBalance(amount);
               userRepository.save(user);
-              log.info("Added {} to user {} balance. New balance: {}", amount, username, user.getBalance());
+              log.info(
+                  "Added {} to user {} balance. New balance: {}",
+                  amount,
+                  username,
+                  user.getBalance());
             });
   }
 
@@ -214,6 +221,10 @@ public class BalanceService {
    */
   public void trackSellOrder(String orderId, String username, BigDecimal amount) {
     pendingSellOrders.put(orderId, new PendingOrder(username, amount));
-    log.info("Tracking SELL order {} for user {}. Will credit {} when filled", orderId, username, amount);
+    log.info(
+        "Tracking SELL order {} for user {}. Will credit {} when filled",
+        orderId,
+        username,
+        amount);
   }
 }

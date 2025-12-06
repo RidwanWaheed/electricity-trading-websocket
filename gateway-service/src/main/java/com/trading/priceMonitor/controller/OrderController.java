@@ -96,7 +96,8 @@ public class OrderController {
     // For SELL orders, track for later credit when filled
     if ("SELL".equals(order.type())) {
       balanceService.trackSellOrder(order.orderId(), username, orderValue);
-      log.info("[corr-id={}] Tracking SELL order for {} credit when filled", correlationId, orderValue);
+      log.info(
+          "[corr-id={}] Tracking SELL order for {} credit when filled", correlationId, orderValue);
     }
 
     // Send immediate PENDING acknowledgment before async processing

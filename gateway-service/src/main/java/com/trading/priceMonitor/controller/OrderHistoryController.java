@@ -55,7 +55,10 @@ public class OrderHistoryController {
     try {
       ResponseEntity<List<OrderHistoryResponse>> response =
           restTemplate.exchange(
-              url, HttpMethod.GET, null, new ParameterizedTypeReference<List<OrderHistoryResponse>>() {});
+              url,
+              HttpMethod.GET,
+              null,
+              new ParameterizedTypeReference<List<OrderHistoryResponse>>() {});
 
       List<OrderHistoryResponse> orders = response.getBody();
       log.info("Retrieved {} orders for user: {}", orders != null ? orders.size() : 0, username);

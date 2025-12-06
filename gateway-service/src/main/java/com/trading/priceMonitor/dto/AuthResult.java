@@ -1,6 +1,7 @@
 package com.trading.priceMonitor.dto;
 
-public record AuthResult(boolean success, String token, String username, String balance, String error) {
+public record AuthResult(
+    boolean success, String token, String username, String balance, String error) {
 
   public static AuthResult success(String token, String username, String balance) {
     return new AuthResult(true, token, username, balance, null);

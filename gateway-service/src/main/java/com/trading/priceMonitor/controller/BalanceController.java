@@ -32,8 +32,7 @@ public class BalanceController {
   @GetMapping
   public ResponseEntity<BalanceResponse> getBalance(Principal principal) {
     String username = principal.getName();
-    BigDecimal balance =
-        balanceService.getBalance(username).orElse(BigDecimal.ZERO);
+    BigDecimal balance = balanceService.getBalance(username).orElse(BigDecimal.ZERO);
     return ResponseEntity.ok(new BalanceResponse(balance.toString()));
   }
 

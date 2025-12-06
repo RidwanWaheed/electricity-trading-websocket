@@ -27,7 +27,8 @@ public class AuthController {
     AuthResult result = authService.authenticate(request.username(), request.password());
 
     if (result.success()) {
-      return ResponseEntity.ok(new AuthResponse(result.token(), result.username(), result.balance()));
+      return ResponseEntity.ok(
+          new AuthResponse(result.token(), result.username(), result.balance()));
     } else {
       return ResponseEntity.status(401).body(Map.of("error", result.error()));
     }
@@ -38,7 +39,8 @@ public class AuthController {
     AuthResult result = authService.register(request.username(), request.password());
 
     if (result.success()) {
-      return ResponseEntity.ok(new AuthResponse(result.token(), result.username(), result.balance()));
+      return ResponseEntity.ok(
+          new AuthResponse(result.token(), result.username(), result.balance()));
     } else {
       return ResponseEntity.badRequest().body(Map.of("error", result.error()));
     }
