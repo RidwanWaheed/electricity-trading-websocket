@@ -87,6 +87,8 @@ function log(message, type = 'info') {
     let entryClass = 'system-log__entry';
     if (type === 'error') entryClass += ' system-log__entry--error';
     if (type === 'success') entryClass += ' system-log__entry--success';
+    if (type === 'warning') entryClass += ' system-log__entry--warning';
+    if (type === 'pending') entryClass += ' system-log__entry--pending';
 
     entry.className = entryClass;
     entry.innerHTML = `<span class="system-log__timestamp">[${new Date().toLocaleTimeString()}]</span> ${message}`;
@@ -124,6 +126,10 @@ async function login(event) {
         jwtToken = data.token;
         currentUsername = data.username;
 
+        // Persist session to localStorage
+        localStorage.setItem('jwtToken', jwtToken);
+        localStorage.setItem('username', currentUsername);
+
         log(`Login successful for ${currentUsername}`, 'success');
         showToast('Welcome!', `Logged in as ${currentUsername}`, 'success');
 
@@ -131,6 +137,9 @@ async function login(event) {
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('tradingScreen').classList.remove('hidden');
         document.getElementById('currentUser').textContent = currentUsername;
+
+        // Fetch order history from server
+        fetchOrderHistory();
 
     } catch (error) {
         log('Login failed: ' + error.message, 'error');
@@ -147,6 +156,11 @@ function logout() {
     jwtToken = null;
     currentUsername = null;
     pendingOrders.clear();
+
+    // Clear session from localStorage
+    localStorage.removeItem('jwtToken');
+    localStorage.removeItem('username');
+
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('tradingScreen').classList.add('hidden');
     log('Logged out');
@@ -387,13 +401,121 @@ function submitOrder(event) {
 
     // Send order to server via WebSocket
     stompClient.send('/app/order', {}, JSON.stringify(order));
-    log(`Order submitted: ${order.type} ${order.quantity} MWh @ ${order.price.toFixed(2)} NGN (${order.region})`);
-    showToast('Order Submitted', `${order.type} ${order.quantity} MWh @ ${order.price.toFixed(2)} NGN`, 'info');
+    log(`Order submitted: ${order.type} ${order.quantity} MWh @ ${order.price.toFixed(2)} EUR/MWh (${order.region})`);
+    showToast('Order Submitted', `${order.type} ${order.quantity} MWh @ ${order.price.toFixed(2)} EUR/MWh`, 'info');
 }
 
 // ============================================
 // Order History
 // ============================================
+
+/**
+ * Fetch order history from the server for the current user.
+ * Called after login or session restore to populate the order history UI.
+ */
+async function fetchOrderHistory() {
+    if (!jwtToken) {
+        log('Cannot fetch order history: not authenticated', 'error');
+        return;
+    }
+
+    try {
+        log('Fetching order history...');
+        const response = await fetch('/api/orders/history?limit=10', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const orders = await response.json();
+        log(`Loaded ${orders.length} orders from history`, 'success');
+
+        // Clear existing history UI
+        const historyBody = document.getElementById('orderHistoryBody');
+        historyBody.innerHTML = '';
+
+        if (orders.length === 0) {
+            historyBody.innerHTML = `
+                <div class="order-history__empty">
+                    No orders yet. Submit an order to get started.
+                </div>
+            `;
+            return;
+        }
+
+        // Add orders to UI (they come sorted by most recent first)
+        orders.forEach(order => {
+            addOrderToHistoryFromServer(order);
+        });
+
+    } catch (error) {
+        log('Failed to fetch order history: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Add an order from server response to the history UI.
+ * Different from addOrderToHistory because server response has different format.
+ */
+function addOrderToHistoryFromServer(order) {
+    const historyBody = document.getElementById('orderHistoryBody');
+
+    // Remove empty state message if present
+    const emptyState = historyBody.querySelector('.order-history__empty');
+    if (emptyState) {
+        emptyState.remove();
+    }
+
+    const badgeClass = order.type === 'BUY' ? 'order-history__badge--buy' : 'order-history__badge--sell';
+    const status = order.status.toLowerCase();
+    const statusDotClass = `order-history__status-dot--${status}`;
+    const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+
+    // Parse numeric values from strings
+    const quantity = parseFloat(order.quantity);
+    const price = parseFloat(order.price);
+
+    const row = document.createElement('div');
+    row.className = 'order-history__row';
+    row.id = `order-${order.orderId}`;
+
+    let statusHtml = `
+        <div class="order-history__status">
+            <span class="order-history__status-dot ${statusDotClass}"></span>
+            <span class="order-history__status-text">${statusText}</span>
+        </div>
+    `;
+
+    // Add tooltip for rejected orders
+    if (status === 'rejected' && order.rejectReason) {
+        statusHtml = `
+            <div class="order-history__status order-history__status--has-tooltip" data-reason="${order.rejectReason}">
+                <span class="order-history__status-dot ${statusDotClass}"></span>
+                <span class="order-history__status-text">${statusText}</span>
+            </div>
+        `;
+    }
+
+    row.innerHTML = `
+        <span class="order-history__badge ${badgeClass}">${order.type}</span>
+        <div class="order-history__details">
+            <div class="order-history__quantity">${quantity} MWh</div>
+            <div class="order-history__price">@ ${price.toFixed(2)} EUR/MWh</div>
+            <div class="order-history__region">${order.region}</div>
+        </div>
+        ${statusHtml}
+    `;
+
+    // Append (not prepend) since server already sorted by most recent
+    historyBody.appendChild(row);
+}
+
 function addOrderToHistory(order, status = 'pending') {
     const historyBody = document.getElementById('orderHistoryBody');
 
@@ -414,7 +536,7 @@ function addOrderToHistory(order, status = 'pending') {
         <span class="order-history__badge ${badgeClass}">${order.type}</span>
         <div class="order-history__details">
             <div class="order-history__quantity">${order.quantity} MWh</div>
-            <div class="order-history__price">@ ${order.price.toFixed(2)} NGN</div>
+            <div class="order-history__price">@ ${order.price.toFixed(2)} EUR/MWh</div>
             <div class="order-history__region">${order.region}</div>
         </div>
         <div class="order-history__status">
@@ -432,16 +554,18 @@ function addOrderToHistory(order, status = 'pending') {
     }
 }
 
-function updateOrderStatus(orderId, status) {
+function updateOrderStatus(orderId, status, reason = null) {
     const row = document.getElementById(`order-${orderId}`);
     if (!row) return;
 
     const statusDot = row.querySelector('.order-history__status-dot');
     const statusText = row.querySelector('.order-history__status-text');
+    const statusContainer = row.querySelector('.order-history__status');
 
     // Remove existing status classes
     statusDot.classList.remove(
         'order-history__status-dot--pending',
+        'order-history__status-dot--submitted',
         'order-history__status-dot--filled',
         'order-history__status-dot--rejected'
     );
@@ -449,6 +573,12 @@ function updateOrderStatus(orderId, status) {
     // Add new status class
     statusDot.classList.add(`order-history__status-dot--${status}`);
     statusText.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+
+    // Add tooltip for rejected orders with reason
+    if (status === 'rejected' && reason) {
+        statusContainer.setAttribute('data-reason', reason);
+        statusContainer.classList.add('order-history__status--has-tooltip');
+    }
 }
 
 // ============================================
@@ -461,31 +591,66 @@ function onPriceReceived(price) {
 
 function onConfirmationReceived(confirmation) {
     const order = pendingOrders.get(confirmation.orderId);
-    const isAccepted = confirmation.status === 'ACCEPTED';
+    const status = confirmation.status; // PENDING, SUBMITTED, FILLED, REJECTED
 
-    log(`Order ${confirmation.orderId}: ${confirmation.status}`,
-        isAccepted ? 'success' : 'error');
+    // Map backend status to UI status, log type, and toast type
+    let historyStatus;
+    let logType;
+    let toastType;
+    let toastTitle;
 
-    // Update order status in history
-    const historyStatus = isAccepted ? 'filled' : 'rejected';
-    updateOrderStatus(confirmation.orderId, historyStatus);
+    switch (status) {
+        case 'PENDING':
+            historyStatus = 'pending';
+            logType = 'pending';      // Orange
+            toastType = 'info';
+            toastTitle = 'Order PENDING';
+            break;
+        case 'SUBMITTED':
+            historyStatus = 'submitted';
+            logType = 'warning';      // Yellow
+            toastType = 'info';
+            toastTitle = 'Order SUBMITTED';
+            break;
+        case 'FILLED':
+            historyStatus = 'filled';
+            logType = 'success';      // Green
+            toastType = 'success';
+            toastTitle = 'Order FILLED';
+            // Order complete - remove from pending
+            pendingOrders.delete(confirmation.orderId);
+            break;
+        case 'REJECTED':
+            historyStatus = 'rejected';
+            logType = 'error';        // Red
+            toastType = 'error';
+            toastTitle = 'Order REJECTED';
+            // Order complete - remove from pending
+            pendingOrders.delete(confirmation.orderId);
+            break;
+        default:
+            historyStatus = 'pending';
+            logType = 'info';
+            toastType = 'info';
+            toastTitle = `Order ${status}`;
+    }
+
+    // Include rejection reason in log if available
+    const logMessage = status === 'REJECTED' && confirmation.message
+        ? `Order ${confirmation.orderId}: ${status} - ${confirmation.message}`
+        : `Order ${confirmation.orderId}: ${status}`;
+    log(logMessage, logType);
+
+    // Update order status in history (pass reason for rejected orders)
+    const reason = status === 'REJECTED' ? confirmation.message : null;
+    updateOrderStatus(confirmation.orderId, historyStatus, reason);
 
     // Show toast notification
-    if (order) {
-        const toastType = isAccepted ? 'success' : 'error';
-        showToast(
-            `Order ${confirmation.status}`,
-            `${order.type} ${order.quantity} MWh @ ${order.price.toFixed(2)} NGN (${order.region})`,
-            toastType
-        );
-        pendingOrders.delete(confirmation.orderId);
-    } else {
-        showToast(
-            `Order ${confirmation.status}`,
-            confirmation.message || confirmation.orderId,
-            isAccepted ? 'success' : 'error'
-        );
-    }
+    const toastMessage = order
+        ? `${order.type} ${order.quantity} MWh @ ${order.price.toFixed(2)} EUR/MWh (${order.region})`
+        : confirmation.message || confirmation.orderId;
+
+    showToast(toastTitle, toastMessage, toastType);
 }
 
 function updatePriceTable() {
@@ -532,4 +697,27 @@ function updatePriceTable() {
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
     log('Application initialized');
+
+    // Check for saved session in localStorage
+    const savedToken = localStorage.getItem('jwtToken');
+    const savedUsername = localStorage.getItem('username');
+
+    if (savedToken && savedUsername) {
+        // Restore session
+        jwtToken = savedToken;
+        currentUsername = savedUsername;
+
+        log(`Session restored for ${currentUsername}`, 'success');
+
+        // Show trading screen, hide login
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('tradingScreen').classList.remove('hidden');
+        document.getElementById('currentUser').textContent = currentUsername;
+
+        // Fetch order history from server
+        fetchOrderHistory();
+
+        // Auto-connect to WebSocket
+        connect();
+    }
 });
