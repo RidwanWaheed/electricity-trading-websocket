@@ -27,8 +27,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-  // ===== EXCHANGES =====
-
   /** Exchange for M7 order communication */
   @Bean
   public TopicExchange m7Exchange() {
@@ -41,23 +39,17 @@ public class RabbitMQConfig {
     return new TopicExchange(PRICES_EXCHANGE);
   }
 
-  // ===== QUEUES =====
-
   /** Queue for receiving order requests from Order Service */
   @Bean
   public Queue m7RequestsQueue() {
     return QueueBuilder.durable(QUEUE_M7_REQUESTS).build();
   }
 
-  // ===== BINDINGS =====
-
   /** Bind M7 requests queue to M7 exchange */
   @Bean
   public Binding m7RequestsBinding(Queue m7RequestsQueue, TopicExchange m7Exchange) {
     return BindingBuilder.bind(m7RequestsQueue).to(m7Exchange).with(ROUTING_M7_REQUEST);
   }
-
-  // ===== MESSAGE CONVERTER =====
 
   @Bean
   public MessageConverter jsonMessageConverter() {
