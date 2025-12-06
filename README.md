@@ -38,7 +38,7 @@ This repository serves as a hands-on learning project to understand WebSocket/ST
 | RabbitMQ | 5672 | Message broker (Management UI: 15672) |
 | PostgreSQL | 5432 | Database (users, orders) |
 
-**[📖 Detailed Architecture Documentation](ARCHITECTURE.md)** - Design patterns, message flows, security architecture, and technology decisions.
+**[Detailed Architecture Documentation](docs/ARCHITECTURE.md)** - Design patterns, message flows, security architecture, and technology decisions.
 
 ## Features
 
