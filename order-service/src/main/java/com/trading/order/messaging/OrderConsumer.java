@@ -1,11 +1,12 @@
 package com.trading.order.messaging;
 
-import static com.trading.common.messaging.RabbitMQConstants.*;
+import static com.trading.common.messaging.RabbitMQConstants.QUEUE_ORDER_SUBMISSIONS;
 
 import com.trading.common.OrderStatus;
 import com.trading.common.messaging.OrderSubmitMessage;
 import com.trading.order.entity.OrderEntity;
 import com.trading.order.repository.OrderRepository;
+import java.math.BigDecimal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -86,19 +87,18 @@ public class OrderConsumer {
   }
 
   /**
-   * Validate the order.
+   * Validate the order including trading limits.
    *
-   * <p>In a real system, this would check:
+   * <p>Validates:
    *
    * <ul>
    *   <li>Valid region
-   *   <li>Price within acceptable range
-   *   <li>Quantity within limits
-   *   <li>User has permission to trade
+   *   <li>Price within acceptable range (0.01 - 500 EUR/MWh)
+   *   <li>Quantity within limits (0.1 - 1000 MWh)
+   *   <li>Valid order type (BUY/SELL)
    * </ul>
    */
   private boolean isValidOrder(OrderSubmitMessage message) {
-    // Basic validation
     if (message.quantity() == null || message.quantity().signum() <= 0) {
       log.warn("[corr-id={}] Invalid quantity: {}", message.correlationId(), message.quantity());
       return false;
@@ -116,6 +116,31 @@ public class OrderConsumer {
       log.warn("[corr-id={}] Invalid order type: {}", message.correlationId(), message.orderType());
       return false;
     }
+
+    // Trading limits validation
+    // Price limits: 0.01 - 500 EUR/MWh (electricity can go negative but we simplify here)
+    BigDecimal minPrice = new BigDecimal("0.01");
+    BigDecimal maxPrice = new BigDecimal("500.00");
+    if (message.price().compareTo(minPrice) < 0 || message.price().compareTo(maxPrice) > 0) {
+      log.warn(
+          "[corr-id={}] Price out of range (0.01-500): {}",
+          message.correlationId(),
+          message.price());
+      return false;
+    }
+
+    // Quantity limits: 0.1 - 1000 MWh
+    BigDecimal minQuantity = new BigDecimal("0.1");
+    BigDecimal maxQuantity = new BigDecimal("1000.00");
+    if (message.quantity().compareTo(minQuantity) < 0
+        || message.quantity().compareTo(maxQuantity) > 0) {
+      log.warn(
+          "[corr-id={}] Quantity out of range (0.1-1000): {}",
+          message.correlationId(),
+          message.quantity());
+      return false;
+    }
+
     return true;
   }
 }

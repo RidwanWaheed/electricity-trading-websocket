@@ -30,14 +30,14 @@ public class AuthService {
     }
 
     String token = jwtService.generateToken(user.getUsername());
-    return AuthResult.success(token, user.getUsername());
+    return AuthResult.success(token, user.getUsername(), user.getBalance().toString());
   }
 
   public AuthResult register(String username, String password) {
     try {
       UserEntity user = userService.createUser(username, password);
       String token = jwtService.generateToken(user.getUsername());
-      return AuthResult.success(token, user.getUsername());
+      return AuthResult.success(token, user.getUsername(), user.getBalance().toString());
     } catch (IllegalArgumentException e) {
       return AuthResult.failure(e.getMessage());
     }

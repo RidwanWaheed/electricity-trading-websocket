@@ -9,6 +9,7 @@
 let stompClient = null;
 let jwtToken = null;
 let currentUsername = null;
+let currentBalance = null;
 const priceData = {};
 let orderCounter = 1;
 
@@ -101,6 +102,39 @@ function log(message, type = 'info') {
 }
 
 // ============================================
+// Balance Management
+// ============================================
+function updateBalanceDisplay(balance) {
+    const balanceEl = document.getElementById('userBalance');
+    if (balanceEl && balance !== null && balance !== undefined) {
+        const balanceNum = parseFloat(balance);
+        currentBalance = balanceNum;
+        balanceEl.textContent = `Balance: €${balanceNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+}
+
+async function fetchBalance() {
+    if (!jwtToken) return;
+
+    try {
+        const response = await fetch('/api/balance', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${jwtToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            updateBalanceDisplay(data.balance);
+        }
+    } catch (error) {
+        log('Failed to fetch balance: ' + error.message, 'error');
+    }
+}
+
+// ============================================
 // Authentication
 // ============================================
 async function login(event) {
@@ -129,9 +163,15 @@ async function login(event) {
         // Persist session to localStorage
         localStorage.setItem('jwtToken', jwtToken);
         localStorage.setItem('username', currentUsername);
+        if (data.balance) {
+            localStorage.setItem('balance', data.balance);
+        }
 
         log(`Login successful for ${currentUsername}`, 'success');
         showToast('Welcome!', `Logged in as ${currentUsername}`, 'success');
+
+        // Update balance display
+        updateBalanceDisplay(data.balance);
 
         // Show trading screen, hide login
         document.getElementById('loginScreen').classList.add('hidden');
@@ -155,11 +195,16 @@ function logout() {
     disconnect();
     jwtToken = null;
     currentUsername = null;
+    currentBalance = null;
     pendingOrders.clear();
 
     // Clear session from localStorage
     localStorage.removeItem('jwtToken');
     localStorage.removeItem('username');
+    localStorage.removeItem('balance');
+
+    // Reset balance display
+    document.getElementById('userBalance').textContent = 'Balance: --';
 
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('tradingScreen').classList.add('hidden');
@@ -619,6 +664,8 @@ function onConfirmationReceived(confirmation) {
             toastTitle = 'Order FILLED';
             // Order complete - remove from pending
             pendingOrders.delete(confirmation.orderId);
+            // Refresh balance after order is filled
+            fetchBalance();
             break;
         case 'REJECTED':
             historyStatus = 'rejected';
@@ -627,6 +674,8 @@ function onConfirmationReceived(confirmation) {
             toastTitle = 'Order REJECTED';
             // Order complete - remove from pending
             pendingOrders.delete(confirmation.orderId);
+            // Refresh balance (may be refunded for rejected BUY orders)
+            fetchBalance();
             break;
         default:
             historyStatus = 'pending';
@@ -701,6 +750,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check for saved session in localStorage
     const savedToken = localStorage.getItem('jwtToken');
     const savedUsername = localStorage.getItem('username');
+    const savedBalance = localStorage.getItem('balance');
 
     if (savedToken && savedUsername) {
         // Restore session
@@ -713,6 +763,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('tradingScreen').classList.remove('hidden');
         document.getElementById('currentUser').textContent = currentUsername;
+
+        // Restore balance from localStorage (quick display) then fetch fresh from server
+        if (savedBalance) {
+            updateBalanceDisplay(savedBalance);
+        }
+
+        // Fetch fresh balance from server (balance may have changed)
+        fetchBalance();
 
         // Fetch order history from server
         fetchOrderHistory();
