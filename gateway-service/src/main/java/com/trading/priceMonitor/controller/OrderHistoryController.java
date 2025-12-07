@@ -1,6 +1,7 @@
 package com.trading.priceMonitor.controller;
 
 import com.trading.priceMonitor.dto.OrderHistoryResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import java.security.Principal;
 import java.util.List;
 import org.slf4j.Logger;
@@ -15,11 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-/**
- * REST controller for fetching order history.
- *
- * <p>Proxies requests to Order Service to retrieve the user's order history.
- */
+/** REST controller for fetching order history. */
 @RestController
 @RequestMapping("/api/orders")
 public class OrderHistoryController {
@@ -36,13 +33,7 @@ public class OrderHistoryController {
     this.orderServiceUrl = orderServiceUrl;
   }
 
-  /**
-   * Get order history for the authenticated user.
-   *
-   * @param principal The authenticated user
-   * @param limit Maximum number of orders to return
-   * @return List of orders from Order Service
-   */
+  @Operation(summary = "Get order history", description = "Retrieve past orders for the authenticated user")
   @GetMapping("/history")
   public ResponseEntity<List<OrderHistoryResponse>> getOrderHistory(
       Principal principal, @RequestParam(defaultValue = "20") int limit) {

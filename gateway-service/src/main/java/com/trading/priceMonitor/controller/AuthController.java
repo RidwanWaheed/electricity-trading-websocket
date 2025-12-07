@@ -5,6 +5,8 @@ import com.trading.priceMonitor.dto.AuthResult;
 import com.trading.priceMonitor.dto.LoginRequest;
 import com.trading.priceMonitor.dto.RegisterRequest;
 import com.trading.priceMonitor.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,19 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * REST controller for authentication endpoints.
- *
- * <p>Provides public endpoints for user login and registration. On successful authentication,
- * returns a JWT token that clients use for subsequent API calls and WebSocket connections.
- *
- * <p>Endpoints:
- *
- * <ul>
- *   <li>POST /api/auth/login - Authenticate existing user
- *   <li>POST /api/auth/register - Create new user account
- * </ul>
- */
+/** REST controller for authentication endpoints (login and registration). */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -35,12 +25,8 @@ public class AuthController {
     this.authService = authService;
   }
 
-  /**
-   * Authenticates a user and returns a JWT token.
-   *
-   * @param request Login credentials (username, password)
-   * @return 200 OK with token on success, 401 Unauthorized on failure
-   */
+  @Operation(summary = "Login", description = "Authenticate with username and password to receive a JWT token")
+  @SecurityRequirements
   @PostMapping("/login")
   public ResponseEntity<?> login(@RequestBody LoginRequest request) {
     AuthResult result = authService.authenticate(request.username(), request.password());
@@ -53,12 +39,8 @@ public class AuthController {
     }
   }
 
-  /**
-   * Registers a new user account and returns a JWT token.
-   *
-   * @param request Registration details (username, password)
-   * @return 200 OK with token on success, 400 Bad Request if username taken
-   */
+  @Operation(summary = "Register", description = "Create a new user account and receive a JWT token")
+  @SecurityRequirements
   @PostMapping("/register")
   public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
     AuthResult result = authService.register(request.username(), request.password());

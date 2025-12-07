@@ -77,6 +77,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/h2-console/**")
                     .permitAll()
+                    .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
+                    .permitAll()
+                    .requestMatchers("/webjars/**")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
