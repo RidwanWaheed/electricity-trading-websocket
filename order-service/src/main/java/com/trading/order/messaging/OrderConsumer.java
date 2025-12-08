@@ -94,6 +94,8 @@ public class OrderConsumer {
    *   <li>Quantity within limits (0.1 - 1000 MWh)
    *   <li>Valid order type (BUY/SELL)
    * </ul>
+   *
+   * <p>Note: Decimal precision is validated at the Gateway boundary.
    */
   private boolean isValidOrder(OrderSubmitMessage message) {
     if (message.quantity() == null || message.quantity().signum() <= 0) {
@@ -128,7 +130,7 @@ public class OrderConsumer {
 
     // Quantity limits: 0.1 - 1000 MWh
     BigDecimal minQuantity = new BigDecimal("0.1");
-    BigDecimal maxQuantity = new BigDecimal("1000.00");
+    BigDecimal maxQuantity = new BigDecimal("1000.0");
     if (message.quantity().compareTo(minQuantity) < 0
         || message.quantity().compareTo(maxQuantity) > 0) {
       log.warn(

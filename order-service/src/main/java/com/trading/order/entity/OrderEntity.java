@@ -55,10 +55,10 @@ public class OrderEntity {
   @Column(nullable = false)
   private String orderType;
 
-  @Column(nullable = false, precision = 19, scale = 4)
+  @Column(nullable = false, precision = 8, scale = 1)
   private BigDecimal quantity;
 
-  @Column(nullable = false, precision = 19, scale = 4)
+  @Column(nullable = false, precision = 8, scale = 2)
   private BigDecimal price;
 
   @Enumerated(EnumType.STRING)
@@ -69,7 +69,7 @@ public class OrderEntity {
   private String m7ReferenceId;
 
   /** May differ from requested price */
-  @Column(precision = 19, scale = 4)
+  @Column(precision = 8, scale = 2)
   private BigDecimal executionPrice;
 
   private String rejectReason;
