@@ -1,5 +1,6 @@
 package com.trading.priceMonitor.model;
 
+import com.trading.common.Region;
 import java.math.BigDecimal;
 import java.time.Instant;
 
@@ -10,7 +11,7 @@ import java.time.Instant;
  * exchange), passes through RabbitMQ, and is broadcast by Gateway to connected clients.
  *
  * @param area Market area (e.g., "Germany")
- * @param region Trading region within the area (e.g., "NORTH", "SOUTH")
+ * @param region Trading region (type-safe enum: NORTH, SOUTH, EAST, WEST)
  * @param price Current price in the specified currency per MWh
  * @param currency Price currency (e.g., "EUR")
  * @param changePercent Price change from previous update (e.g., 2.5 for +2.5%)
@@ -18,7 +19,7 @@ import java.time.Instant;
  */
 public record ElectricityPrice(
     String area,
-    String region,
+    Region region,
     BigDecimal price,
     String currency,
     double changePercent,
@@ -27,9 +28,6 @@ public record ElectricityPrice(
   public ElectricityPrice {
     if (area == null || area.isBlank()) {
       throw new IllegalArgumentException("Area cannot be null or blank");
-    }
-    if (region == null || region.isBlank()) {
-      throw new IllegalArgumentException("Region cannot be null or blank");
     }
     if (price == null) {
       throw new IllegalArgumentException("Price cannot be null");

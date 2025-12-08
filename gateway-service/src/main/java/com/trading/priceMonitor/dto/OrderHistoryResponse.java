@@ -1,5 +1,7 @@
 package com.trading.priceMonitor.dto;
 
+import com.trading.common.Region;
+
 /**
  * Response DTO for order history queries.
  *
@@ -8,7 +10,7 @@ package com.trading.priceMonitor.dto;
 public record OrderHistoryResponse(
     String orderId,
     String type,
-    String region,
+    Region region,
     String quantity,
     String price,
     String status,

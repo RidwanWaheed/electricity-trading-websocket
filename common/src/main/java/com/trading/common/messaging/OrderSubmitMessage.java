@@ -1,5 +1,6 @@
 package com.trading.common.messaging;
 
+import com.trading.common.Region;
 import java.math.BigDecimal;
 
 /**
@@ -10,7 +11,7 @@ import java.math.BigDecimal;
  * @param correlationId Unique ID to track this order across all services
  * @param orderId Unique order identifier (UUID)
  * @param username The authenticated user who placed the order
- * @param region Trading region (e.g., "NORTH", "SOUTH")
+ * @param region Trading region - must be one of NORTH, SOUTH, EAST, WEST
  * @param orderType "BUY" or "SELL"
  * @param quantity Amount of electricity (MWh)
  * @param price Price per MWh
@@ -19,7 +20,7 @@ public record OrderSubmitMessage(
     String correlationId,
     String orderId,
     String username,
-    String region,
+    Region region,
     String orderType,
     BigDecimal quantity,
     BigDecimal price) {

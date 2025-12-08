@@ -1,6 +1,7 @@
 package com.trading.order.entity;
 
 import com.trading.common.OrderStatus;
+import com.trading.common.Region;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -35,8 +36,20 @@ public class OrderEntity {
   @Column(nullable = false)
   private String username;
 
+  /**
+   * Trading region stored as String in database.
+   *
+   * <p>Using @Enumerated(EnumType.STRING) means the database stores "NORTH", "SOUTH", etc.
+   * as actual strings, not ordinal numbers. This is safer because:
+   * <ul>
+   *   <li>Reordering enum constants doesn't break existing data
+   *   <li>Database values are human-readable
+   *   <li>Easier to debug and query directly in SQL
+   * </ul>
+   */
+  @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private String region;
+  private Region region;
 
   @Column(nullable = false)
   private String orderType;
@@ -73,7 +86,7 @@ public class OrderEntity {
       String orderId,
       String correlationId,
       String username,
-      String region,
+      Region region,
       String orderType,
       BigDecimal quantity,
       BigDecimal price) {
@@ -105,7 +118,7 @@ public class OrderEntity {
     return username;
   }
 
-  public String getRegion() {
+  public Region getRegion() {
     return region;
   }
 

@@ -1,5 +1,6 @@
 package com.trading.common.messaging;
 
+import com.trading.common.Region;
 import java.math.BigDecimal;
 
 /**
@@ -17,7 +18,7 @@ import java.math.BigDecimal;
 public record M7OrderRequest(
     String correlationId,
     String orderId,
-    String region,
+    Region region,
     String orderType,
     BigDecimal quantity,
     BigDecimal price) {

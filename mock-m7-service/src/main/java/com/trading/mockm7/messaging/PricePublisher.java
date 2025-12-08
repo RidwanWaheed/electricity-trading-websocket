@@ -2,12 +2,12 @@ package com.trading.mockm7.messaging;
 
 import static com.trading.common.messaging.RabbitMQConstants.*;
 
+import com.trading.common.Region;
 import com.trading.common.messaging.PriceUpdate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.List;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Random;
 import org.slf4j.Logger;
@@ -37,7 +37,6 @@ public class PricePublisher {
 
   private static final Logger log = LoggerFactory.getLogger(PricePublisher.class);
 
-  private static final List<String> REGIONS = List.of("NORTH", "SOUTH", "EAST", "WEST");
   private static final String CURRENCY = "EUR";
 
   /** Base price range for simulation (EUR/MWh) */
@@ -51,13 +50,24 @@ public class PricePublisher {
   private final RabbitTemplate rabbitTemplate;
   private final Random random = new Random();
 
-  /** Tracks previous price per region to calculate deltas */
-  private final Map<String, BigDecimal> previousPrices = new HashMap<>();
+  /**
+   * Tracks previous price per region to calculate deltas.
+   *
+   * <p><b>Why EnumMap instead of HashMap:</b>
+   * EnumMap is optimized for enum keys - it uses an array internally where the index
+   * is the enum's ordinal value. This makes it:
+   * <ul>
+   *   <li>Faster than HashMap (O(1) with no hashing overhead)
+   *   <li>More memory efficient (no Entry objects needed)
+   *   <li>Iteration order matches enum declaration order
+   * </ul>
+   */
+  private final Map<Region, BigDecimal> previousPrices = new EnumMap<>(Region.class);
 
   public PricePublisher(RabbitTemplate rabbitTemplate) {
     this.rabbitTemplate = rabbitTemplate;
-    // Initialize with random starting prices
-    for (String region : REGIONS) {
+    // Initialize with random starting prices for all regions
+    for (Region region : Region.values()) {
       previousPrices.put(region, generateRandomPrice());
     }
   }
@@ -69,9 +79,9 @@ public class PricePublisher {
    */
   @Scheduled(fixedRate = 2000)
   public void publishPrices() {
-    for (String region : REGIONS) {
+    for (Region region : Region.values()) {
       PriceUpdate update = generatePriceUpdate(region);
-      String routingKey = String.format(ROUTING_PRICE_PATTERN, region);
+      String routingKey = String.format(ROUTING_PRICE_PATTERN, region.name());
 
       rabbitTemplate.convertAndSend(PRICES_EXCHANGE, routingKey, update);
 
@@ -87,7 +97,7 @@ public class PricePublisher {
    * <p>Real markets don't jump randomly - prices move incrementally. We simulate this by limiting
    * the change from the previous price.
    */
-  private PriceUpdate generatePriceUpdate(String region) {
+  private PriceUpdate generatePriceUpdate(Region region) {
     BigDecimal previousPrice = previousPrices.get(region);
 
     // Calculate new price with small random change (±5% max)

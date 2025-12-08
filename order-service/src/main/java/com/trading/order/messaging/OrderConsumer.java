@@ -104,8 +104,8 @@ public class OrderConsumer {
       log.warn("[corr-id={}] Invalid price: {}", message.correlationId(), message.price());
       return false;
     }
-    if (message.region() == null || message.region().isBlank()) {
-      log.warn("[corr-id={}] Invalid region", message.correlationId());
+    if (message.region() == null) {
+      log.warn("[corr-id={}] Region is null", message.correlationId());
       return false;
     }
     if (message.orderType() == null
