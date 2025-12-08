@@ -2,6 +2,8 @@ package com.trading.priceMonitor.controller;
 
 import com.trading.priceMonitor.dto.OrderHistoryResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.security.Principal;
 import java.util.List;
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,6 +22,7 @@ import org.springframework.web.client.RestTemplate;
 /** REST controller for fetching order history. */
 @RestController
 @RequestMapping("/api/orders")
+@Validated
 public class OrderHistoryController {
 
   private static final Logger log = LoggerFactory.getLogger(OrderHistoryController.class);
@@ -35,10 +39,14 @@ public class OrderHistoryController {
 
   @Operation(
       summary = "Get order history",
-      description = "Retrieve past orders for the authenticated user")
+      description = "Retrieve past orders for the authenticated user (limit: 1-100)")
   @GetMapping("/history")
   public ResponseEntity<List<OrderHistoryResponse>> getOrderHistory(
-      Principal principal, @RequestParam(defaultValue = "20") int limit) {
+      Principal principal,
+      @RequestParam(defaultValue = "20")
+          @Min(value = 1, message = "Limit must be at least 1")
+          @Max(value = 100, message = "Limit cannot exceed 100")
+          int limit) {
 
     String username = principal.getName();
     log.info("Fetching order history for user: {}, limit: {}", username, limit);

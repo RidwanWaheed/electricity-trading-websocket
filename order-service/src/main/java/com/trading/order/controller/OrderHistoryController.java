@@ -3,10 +3,13 @@ package com.trading.order.controller;
 import com.trading.order.dto.OrderHistoryResponse;
 import com.trading.order.entity.OrderEntity;
 import com.trading.order.repository.OrderRepository;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/orders")
+@Validated
 public class OrderHistoryController {
 
   private static final Logger log = LoggerFactory.getLogger(OrderHistoryController.class);
@@ -34,12 +38,16 @@ public class OrderHistoryController {
    * Get order history for a specific user.
    *
    * @param username The username to fetch orders for
-   * @param limit Maximum number of orders to return (default 20)
+   * @param limit Maximum number of orders to return (1-100, default 20)
    * @return List of orders, most recent first
    */
   @GetMapping("/history/{username}")
   public ResponseEntity<List<OrderHistoryResponse>> getOrderHistory(
-      @PathVariable String username, @RequestParam(defaultValue = "20") int limit) {
+      @PathVariable String username,
+      @RequestParam(defaultValue = "20")
+          @Min(value = 1, message = "Limit must be at least 1")
+          @Max(value = 100, message = "Limit cannot exceed 100")
+          int limit) {
 
     log.info("Fetching order history for user: {}, limit: {}", username, limit);
 
