@@ -25,7 +25,9 @@ public class AuthController {
     this.authService = authService;
   }
 
-  @Operation(summary = "Login", description = "Authenticate with username and password to receive a JWT token")
+  @Operation(
+      summary = "Login",
+      description = "Authenticate with username and password to receive a JWT token")
   @SecurityRequirements
   @PostMapping("/login")
   public ResponseEntity<?> login(@RequestBody LoginRequest request) {
@@ -39,7 +41,9 @@ public class AuthController {
     }
   }
 
-  @Operation(summary = "Register", description = "Create a new user account and receive a JWT token")
+  @Operation(
+      summary = "Register",
+      description = "Create a new user account and receive a JWT token")
   @SecurityRequirements
   @PostMapping("/register")
   public ResponseEntity<?> register(@RequestBody RegisterRequest request) {

@@ -33,7 +33,9 @@ public class OrderHistoryController {
     this.orderServiceUrl = orderServiceUrl;
   }
 
-  @Operation(summary = "Get order history", description = "Retrieve past orders for the authenticated user")
+  @Operation(
+      summary = "Get order history",
+      description = "Retrieve past orders for the authenticated user")
   @GetMapping("/history")
   public ResponseEntity<List<OrderHistoryResponse>> getOrderHistory(
       Principal principal, @RequestParam(defaultValue = "20") int limit) {

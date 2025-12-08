@@ -39,8 +39,9 @@ public class OrderEntity {
   /**
    * Trading region stored as String in database.
    *
-   * <p>Using @Enumerated(EnumType.STRING) means the database stores "NORTH", "SOUTH", etc.
-   * as actual strings, not ordinal numbers. This is safer because:
+   * <p>Using @Enumerated(EnumType.STRING) means the database stores "NORTH", "SOUTH", etc. as
+   * actual strings, not ordinal numbers. This is safer because:
+   *
    * <ul>
    *   <li>Reordering enum constants doesn't break existing data
    *   <li>Database values are human-readable

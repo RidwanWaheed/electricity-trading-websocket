@@ -53,9 +53,9 @@ public class PricePublisher {
   /**
    * Tracks previous price per region to calculate deltas.
    *
-   * <p><b>Why EnumMap instead of HashMap:</b>
-   * EnumMap is optimized for enum keys - it uses an array internally where the index
-   * is the enum's ordinal value. This makes it:
+   * <p><b>Why EnumMap instead of HashMap:</b> EnumMap is optimized for enum keys - it uses an array
+   * internally where the index is the enum's ordinal value. This makes it:
+   *
    * <ul>
    *   <li>Faster than HashMap (O(1) with no hashing overhead)
    *   <li>More memory efficient (no Entry objects needed)

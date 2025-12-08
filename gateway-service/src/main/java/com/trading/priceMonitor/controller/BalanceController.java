@@ -20,7 +20,9 @@ public class BalanceController {
     this.balanceService = balanceService;
   }
 
-  @Operation(summary = "Get balance", description = "Get the current EUR balance for the authenticated user")
+  @Operation(
+      summary = "Get balance",
+      description = "Get the current EUR balance for the authenticated user")
   @GetMapping
   public ResponseEntity<BalanceResponse> getBalance(Principal principal) {
     String username = principal.getName();

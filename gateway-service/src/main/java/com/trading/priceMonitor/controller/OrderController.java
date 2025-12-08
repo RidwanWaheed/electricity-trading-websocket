@@ -6,6 +6,7 @@ import com.trading.priceMonitor.messaging.OrderPublisher;
 import com.trading.priceMonitor.model.Order;
 import com.trading.priceMonitor.model.OrderConfirmation;
 import com.trading.priceMonitor.service.BalanceService;
+import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.time.Instant;
@@ -17,6 +18,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * WebSocket controller for order submissions.
@@ -24,17 +26,18 @@ import org.springframework.stereotype.Controller;
  * <p>Receives orders via STOMP, validates trading limits and balance, generates a correlation ID
  * for tracking, sends an immediate acknowledgment to the user, then publishes to Order Service via
  * RabbitMQ.
+ *
+ * <p><b>Why @Validated on the class?</b> Spring requires @Validated on the class level to enable
+ * method parameter validation for non-REST controllers (like WebSocket @MessageMapping methods).
  */
 @Controller
+@Validated
 public class OrderController {
 
   private static final Logger log = LoggerFactory.getLogger(OrderController.class);
 
-  // Trading limits (must match Order Service validation)
-  private static final BigDecimal MIN_PRICE = new BigDecimal("0.01");
-  private static final BigDecimal MAX_PRICE = new BigDecimal("500.00");
-  private static final BigDecimal MIN_QUANTITY = new BigDecimal("0.1");
-  private static final BigDecimal MAX_QUANTITY = new BigDecimal("1000.00");
+  // Note: Trading limits are now defined as JSR-380 annotations in the Order record.
+  // This keeps validation rules in one place (the DTO) rather than scattered in controllers.
 
   private final SimpMessagingTemplate messagingTemplate;
   private final OrderPublisher orderPublisher;
@@ -55,7 +58,7 @@ public class OrderController {
    * <p>Flow:
    *
    * <ol>
-   *   <li>Validate trading limits (price, quantity)
+   *   <li>Validate order using JSR-380 annotations (@Valid)
    *   <li>For BUY orders: check and reserve balance
    *   <li>Generate correlation ID for distributed tracing
    *   <li>Send immediate PENDING acknowledgment to user
@@ -63,7 +66,7 @@ public class OrderController {
    * </ol>
    */
   @MessageMapping("/order")
-  public void handleOrder(Order order, Principal principal) {
+  public void handleOrder(@Valid Order order, Principal principal) {
     String username = extractUsername(principal);
     String correlationId = generateCorrelationId();
 
@@ -72,14 +75,6 @@ public class OrderController {
         correlationId,
         order.orderId(),
         username);
-
-    // Validate trading limits first
-    String validationError = validateTradingLimits(order);
-    if (validationError != null) {
-      log.warn("[corr-id={}] Validation failed: {}", correlationId, validationError);
-      sendRejection(username, order.orderId(), validationError);
-      return;
-    }
 
     BigDecimal orderValue = order.price().multiply(order.quantity());
 
@@ -121,27 +116,6 @@ public class OrderController {
             order.price());
 
     orderPublisher.publish(message);
-  }
-
-  /**
-   * Validate trading limits.
-   *
-   * @return null if valid, error message if invalid
-   */
-  private String validateTradingLimits(Order order) {
-    if (order.price() == null || order.price().compareTo(MIN_PRICE) < 0) {
-      return "Price must be at least " + MIN_PRICE + " EUR/MWh";
-    }
-    if (order.price().compareTo(MAX_PRICE) > 0) {
-      return "Price cannot exceed " + MAX_PRICE + " EUR/MWh";
-    }
-    if (order.quantity() == null || order.quantity().compareTo(MIN_QUANTITY) < 0) {
-      return "Quantity must be at least " + MIN_QUANTITY + " MWh";
-    }
-    if (order.quantity().compareTo(MAX_QUANTITY) > 0) {
-      return "Quantity cannot exceed " + MAX_QUANTITY + " MWh";
-    }
-    return null;
   }
 
   /** Send a REJECTED confirmation to the user. */
