@@ -141,7 +141,12 @@ class TradingEngineSimulatorTest {
     void buyOrder_shouldBeProcessed() {
       var buyOrder =
           new M7OrderRequest(
-              "corr-1", "order-1", Region.NORTH, "BUY", new BigDecimal("100"), new BigDecimal("45"));
+              "corr-1",
+              "order-1",
+              Region.NORTH,
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("45"));
 
       simulator.processOrder(buyOrder);
 
@@ -153,7 +158,12 @@ class TradingEngineSimulatorTest {
     void sellOrder_shouldBeProcessed() {
       var sellOrder =
           new M7OrderRequest(
-              "corr-1", "order-1", Region.SOUTH, "SELL", new BigDecimal("50"), new BigDecimal("46"));
+              "corr-1",
+              "order-1",
+              Region.SOUTH,
+              "SELL",
+              new BigDecimal("50"),
+              new BigDecimal("46"));
 
       simulator.processOrder(sellOrder);
 
@@ -165,10 +175,20 @@ class TradingEngineSimulatorTest {
     void differentRegions_shouldBeAccepted() {
       var northOrder =
           new M7OrderRequest(
-              "corr-1", "order-1", Region.NORTH, "BUY", new BigDecimal("100"), new BigDecimal("45"));
+              "corr-1",
+              "order-1",
+              Region.NORTH,
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("45"));
       var southOrder =
           new M7OrderRequest(
-              "corr-2", "order-2", Region.SOUTH, "BUY", new BigDecimal("100"), new BigDecimal("45"));
+              "corr-2",
+              "order-2",
+              Region.SOUTH,
+              "BUY",
+              new BigDecimal("100"),
+              new BigDecimal("45"));
 
       simulator.processOrder(northOrder);
       simulator.processOrder(southOrder);

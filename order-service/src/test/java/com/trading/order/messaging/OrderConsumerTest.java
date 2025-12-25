@@ -51,7 +51,13 @@ class OrderConsumerTest {
 
   private OrderSubmitMessage createValidOrder(String corrId, String orderId, String username) {
     return new OrderSubmitMessage(
-        corrId, orderId, username, Region.NORTH, "BUY", new BigDecimal("100"), new BigDecimal("45.50"));
+        corrId,
+        orderId,
+        username,
+        Region.NORTH,
+        "BUY",
+        new BigDecimal("100"),
+        new BigDecimal("45.50"));
   }
 
   @Nested
@@ -165,7 +171,13 @@ class OrderConsumerTest {
     void nullQuantity_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", Region.NORTH, "BUY", null, new BigDecimal("45.50"));
+              "corr-123",
+              "order-456",
+              "trader1",
+              Region.NORTH,
+              "BUY",
+              null,
+              new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
