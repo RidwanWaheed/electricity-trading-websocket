@@ -1,24 +1,26 @@
 .PHONY: up down deps run-gateway run-order run-m7 test fmt check build logs clean rebuild
 
+COMPOSE := docker-compose -f docker/docker-compose.yml
+
 # =============================================================================
 # Docker Commands
 # =============================================================================
 
 # Start all services (postgres, rabbitmq, gateway, order-service, mock-m7)
 up:
-	docker-compose up -d
+	$(COMPOSE) up -d
 
 # Stop all services
 down:
-	docker-compose down
+	$(COMPOSE) down
 
 # Start only infrastructure (postgres + rabbitmq) for local development
 deps:
-	docker-compose up -d postgres rabbitmq
+	$(COMPOSE) up -d postgres rabbitmq
 
 # Rebuild and restart all app containers
 rebuild:
-	docker-compose up -d --build gateway order-service mock-m7
+	$(COMPOSE) up -d --build gateway order-service mock-m7
 
 # =============================================================================
 # Local Development (requires: make deps)
@@ -77,17 +79,17 @@ clean:
 
 # Tail all service logs
 logs:
-	docker-compose logs -f gateway order-service mock-m7
+	$(COMPOSE) logs -f gateway order-service mock-m7
 
 # Tail specific service logs
 logs-gateway:
-	docker-compose logs -f gateway
+	$(COMPOSE) logs -f gateway
 
 logs-order:
-	docker-compose logs -f order-service
+	$(COMPOSE) logs -f order-service
 
 logs-m7:
-	docker-compose logs -f mock-m7
+	$(COMPOSE) logs -f mock-m7
 
 # =============================================================================
 # Utilities

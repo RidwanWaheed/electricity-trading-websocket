@@ -8,10 +8,10 @@
 #   - rabbitmq:      Message broker (ports 5672, 15672)
 #   - postgres:      Database (port 5432)
 #
-# Quick start:
-#   docker-compose up -d              # Start all services
-#   docker-compose logs -f gateway    # View gateway logs
-#   docker-compose down               # Stop all services
+# Quick start (run from project root):
+#   docker-compose -f docker/docker-compose.yml up -d
+#   docker-compose -f docker/docker-compose.yml logs -f gateway
+#   docker-compose -f docker/docker-compose.yml down
 # =============================================================================
 
 services:
@@ -69,7 +69,7 @@ services:
   # Publishes orders to Order Service, receives status updates
   gateway:
     build:
-      context: .
+      context: ..
       dockerfile: gateway-service/Dockerfile
     container_name: trading-gateway
     environment:
@@ -101,7 +101,7 @@ services:
   # Processes orders, persists to database, communicates with Mock M7
   order-service:
     build:
-      context: .
+      context: ..
       dockerfile: order-service/Dockerfile
     container_name: trading-order-service
     environment:
@@ -134,7 +134,7 @@ services:
   # Receives orders, sends ACK immediately, FILL/REJECT after delay
   mock-m7:
     build:
-      context: .
+      context: ..
       dockerfile: mock-m7-service/Dockerfile
     container_name: trading-mock-m7
     environment:
