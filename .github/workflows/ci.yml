@@ -46,14 +46,45 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build JARs
+        run: ./mvnw package -DskipTests -q
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
+      - name: Build Gateway image
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: gateway-service/Dockerfile
           push: false
-          tags: electricity-trading:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: trading-gateway:latest
+          cache-from: type=gha,scope=gateway
+          cache-to: type=gha,mode=max,scope=gateway
+
+      - name: Build Order Service image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: order-service/Dockerfile
+          push: false
+          tags: trading-order-service:latest
+          cache-from: type=gha,scope=order-service
+          cache-to: type=gha,mode=max,scope=order-service
+
+      - name: Build Mock M7 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: mock-m7-service/Dockerfile
+          push: false
+          tags: trading-mock-m7:latest
+          cache-from: type=gha,scope=mock-m7
+          cache-to: type=gha,mode=max,scope=mock-m7
