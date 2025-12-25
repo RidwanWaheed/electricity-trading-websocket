@@ -1,0 +1,106 @@
+# =============================================================================
+# RabbitMQ: Deployment + Service
+# =============================================================================
+# Message broker for inter-service communication
+# - Port 5672:  AMQP protocol (services connect here)
+# - Port 15672: Management UI (web dashboard)
+#
+# Usage:
+#   kubectl apply -f rabbitmq.yaml
+#   kubectl get pods -n trading
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Deployment: RabbitMQ
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: trading
+  labels:
+    app: rabbitmq
+spec:
+  replicas: 1                   # Single instance for development
+
+  selector:
+    matchLabels:
+      app: rabbitmq
+
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3-management-alpine    # Includes web UI
+
+          ports:
+            - containerPort: 5672       # AMQP
+              name: amqp
+            - containerPort: 15672      # Management UI
+              name: management
+
+          # Environment from Secrets
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: username
+
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: password
+
+          # Readiness: Is RabbitMQ ready to accept connections?
+          readinessProbe:
+            exec:
+              command:
+                - rabbitmq-diagnostics
+                - check_running
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+
+          # Liveness: Is RabbitMQ still alive?
+          livenessProbe:
+            exec:
+              command:
+                - rabbitmq-diagnostics
+                - check_running
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+
+---
+# -----------------------------------------------------------------------------
+# Service: RabbitMQ
+# -----------------------------------------------------------------------------
+# DNS name "rabbitmq" resolves to this service
+# Services connect to: rabbitmq:5672
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: trading
+spec:
+  type: ClusterIP               # Internal access only
+
+  selector:
+    app: rabbitmq
+
+  ports:
+    - port: 5672                # AMQP
+      targetPort: 5672
+      protocol: TCP
+      name: amqp
+
+    - port: 15672               # Management UI
+      targetPort: 15672
+      protocol: TCP
+      name: management

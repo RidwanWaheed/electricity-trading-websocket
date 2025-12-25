@@ -296,6 +296,47 @@ flowchart LR
 | **PostgreSQL** | Production-grade relational database, ACID compliance for trading data |
 | **JWT** | Stateless authentication, works with WebSocket, industry standard |
 | **Docker Compose** | Simplified local development, consistent environments |
+| **Kubernetes** | Production-grade orchestration, auto-restart, cloud-ready deployment |
+
+---
+
+## Deployment
+
+### Kubernetes Structure
+
+The application can be deployed to Kubernetes (local Minikube or cloud EKS/GKE).
+
+```
+k8s/
+├── namespace.yaml       # Isolates resources in 'trading' namespace
+├── config.yaml          # Secrets (DB/RabbitMQ creds) + ConfigMap (Spring config)
+├── postgres.yaml        # Deployment + ClusterIP Service
+├── rabbitmq.yaml        # Deployment + ClusterIP Service
+├── gateway.yaml         # Deployment + NodePort Service (external access)
+├── order-service.yaml   # Deployment + ClusterIP Service
+└── mock-m7.yaml         # Deployment + ClusterIP Service
+```
+
+### Service Exposure
+
+| Service | Type | Access |
+|---------|------|--------|
+| Gateway | NodePort | External (browser access via port 30080) |
+| Order Service | ClusterIP | Internal only (via RabbitMQ) |
+| Mock M7 | ClusterIP | Internal only (via RabbitMQ) |
+| PostgreSQL | ClusterIP | Internal only |
+| RabbitMQ | ClusterIP | Internal only |
+
+### Key Kubernetes Concepts Used
+
+| Concept | Purpose |
+|---------|---------|
+| **Namespace** | Isolate trading resources from other apps |
+| **Deployment** | Manage pod lifecycle with auto-restart |
+| **Service** | Stable DNS names (e.g., `postgres:5432`) |
+| **Secret** | Store credentials (base64 encoded) |
+| **ConfigMap** | Store non-sensitive configuration |
+| **Probes** | Health checks (readiness + liveness) |
 
 ---
 
@@ -309,3 +350,4 @@ This project demonstrates understanding of:
 4. **Security** - JWT authentication, filter chains, stateless sessions
 5. **Design Patterns** - State machine, observer, gateway, proxy, repository
 6. **DevOps** - Docker containerization, service orchestration, health checks
+7. **Kubernetes** - Deployments, Services, Secrets, ConfigMaps, health probes

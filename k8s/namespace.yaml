@@ -1,0 +1,22 @@
+# =============================================================================
+# Namespace: trading
+# =============================================================================
+# A Namespace is like a "folder" that isolates your resources.
+#
+# Benefits:
+#   - All your pods, services, secrets stay grouped together
+#   - Easy cleanup: `kubectl delete namespace trading` removes everything
+#   - Prevents naming conflicts with other projects
+#
+# Usage:
+#   kubectl apply -f namespace.yaml
+#   kubectl get all -n trading        # List everything in this namespace
+# =============================================================================
+
+apiVersion: v1          # API version (v1 is stable, used for core resources)
+kind: Namespace         # What we're creating
+metadata:
+  name: trading         # The namespace name (use in all other files with -n trading)
+  labels:
+    app: electricity-trading    # Labels help you filter/search resources
+    environment: development

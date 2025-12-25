@@ -1,0 +1,131 @@
+# =============================================================================
+# Gateway Service: Deployment + Service
+# =============================================================================
+# Entry point for all client communication:
+#   - WebSocket/STOMP for real-time messaging
+#   - REST API for auth and order history
+#   - Static files (HTML/CSS/JS frontend)
+#
+# Usage:
+#   kubectl apply -f gateway.yaml
+#   minikube service gateway -n trading    # Opens in browser
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Deployment: Gateway
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: trading
+  labels:
+    app: gateway
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: gateway
+
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+        - name: gateway
+          image: gateway-service:latest
+
+          # IMPORTANT: Never pull from registry, use local image
+          # Without this, Kubernetes tries to pull from Docker Hub and fails
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8080
+              name: http
+
+          # Environment variables
+          env:
+            # From ConfigMap
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: SPRING_PROFILES_ACTIVE
+
+            # Database connection
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://postgres:5432/trading"
+
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            # RabbitMQ connection
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: RABBITMQ_HOST
+
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: username
+
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: password
+
+          # Readiness: Is Spring Boot ready to serve traffic?
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30       # Spring Boot needs time to start
+            periodSeconds: 10
+
+          # Liveness: Is the app still responsive?
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60       # Give more time before first check
+            periodSeconds: 15
+
+---
+# -----------------------------------------------------------------------------
+# Service: Gateway
+# -----------------------------------------------------------------------------
+# NodePort: Exposes the service outside the cluster
+# Access via: minikube service gateway -n trading
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: trading
+spec:
+  type: NodePort                # Accessible from outside cluster
+
+  selector:
+    app: gateway
+
+  ports:
+    - port: 8080                # Service port (internal)
+      targetPort: 8080          # Container port
+      nodePort: 30080           # External port (30000-32767 range)
+      protocol: TCP
+      name: http

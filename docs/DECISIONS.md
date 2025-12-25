@@ -154,3 +154,20 @@ Key technical decisions made during development.
 - `httpOnly` cookies (JS can't access, browser sends automatically)
 - Short-lived access tokens (15 min) + refresh tokens
 - Token revocation on logout (requires Redis/database blacklist)
+
+---
+
+## ADR-013: Kubernetes over Docker Compose for Deployment
+
+**Decision:** Add Kubernetes manifests alongside Docker Compose.
+
+**Rationale:**
+- Cloud-ready: Same YAMLs work on Minikube, EKS, GKE, AKS
+- Health management: Probes auto-restart unhealthy pods
+- Configuration: Secrets and ConfigMaps externalize config
+- Industry standard: Most production systems use Kubernetes
+
+**Trade-offs acknowledged:**
+- Docker Compose still works for quick local development
+- `imagePullPolicy: Never` required for local Minikube images
+- NodePort for Gateway (external), ClusterIP for internal services

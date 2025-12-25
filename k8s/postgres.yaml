@@ -1,0 +1,112 @@
+# =============================================================================
+# PostgreSQL: Deployment + Service
+# =============================================================================
+# Deployment: Manages the Pod lifecycle (restart, scale, update)
+# Service:    Provides stable DNS name "postgres" for other services to connect
+#
+# Usage:
+#   kubectl apply -f postgres.yaml
+#   kubectl get pods -n trading
+#   kubectl logs -f <pod-name> -n trading
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Deployment: PostgreSQL
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1             # Deployments use apps/v1 (not v1)
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: trading
+  labels:
+    app: postgres               # Labels for organizing/filtering
+spec:
+  replicas: 1                   # Number of pod instances (1 for databases)
+
+  # Selector: How the Deployment finds its Pods
+  # Must match the Pod's labels below
+  selector:
+    matchLabels:
+      app: postgres
+
+  # Pod Template: Blueprint for creating Pods
+  template:
+    metadata:
+      labels:
+        app: postgres           # Must match selector.matchLabels above
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine     # Same image as docker-compose
+
+          ports:
+            - containerPort: 5432       # Port the container listens on
+
+          # Environment variables from our Secrets
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret   # References our secret
+                  key: database
+
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+          # Health check: Is PostgreSQL ready to accept connections?
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - trading
+                - -d
+                - trading
+            initialDelaySeconds: 5      # Wait 5s before first check
+            periodSeconds: 10           # Check every 10s
+
+          # Liveness check: Is PostgreSQL still alive?
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - trading
+                - -d
+                - trading
+            initialDelaySeconds: 30     # Wait 30s before first check
+            periodSeconds: 10
+
+---
+# -----------------------------------------------------------------------------
+# Service: PostgreSQL
+# -----------------------------------------------------------------------------
+# Provides stable DNS name "postgres" that resolves to the pod's IP
+# Other pods connect to: postgres:5432
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres                # This becomes the DNS name!
+  namespace: trading
+spec:
+  type: ClusterIP               # Internal only (default)
+
+  # Selector: Which pods does this service route traffic to?
+  # Matches the Deployment's pod labels
+  selector:
+    app: postgres
+
+  ports:
+    - port: 5432                # Port the service listens on
+      targetPort: 5432          # Port on the container to forward to
+      protocol: TCP

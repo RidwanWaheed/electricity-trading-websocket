@@ -1,0 +1,107 @@
+# =============================================================================
+# Mock M7 Service: Deployment + Service
+# =============================================================================
+# Simulates the EPEX SPOT trading engine
+#   - Generates realistic electricity prices (every 2 seconds)
+#   - Receives orders, sends ACK immediately, FILL/REJECT after delay
+#   - Stateless (no database needed)
+#
+# Usage:
+#   kubectl apply -f mock-m7.yaml
+#   kubectl logs -f deployment/mock-m7 -n trading
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Deployment: Mock M7
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-m7
+  namespace: trading
+  labels:
+    app: mock-m7
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: mock-m7
+
+  template:
+    metadata:
+      labels:
+        app: mock-m7
+    spec:
+      containers:
+        - name: mock-m7
+          image: mock-m7-service:latest
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 8082
+              name: http
+
+          env:
+            # Spring profile
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: SPRING_PROFILES_ACTIVE
+
+            # RabbitMQ connection (no database needed)
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: RABBITMQ_HOST
+
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: username
+
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: password
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 60
+            periodSeconds: 15
+
+---
+# -----------------------------------------------------------------------------
+# Service: Mock M7
+# -----------------------------------------------------------------------------
+# ClusterIP: Internal access only
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-m7
+  namespace: trading
+spec:
+  type: ClusterIP
+
+  selector:
+    app: mock-m7
+
+  ports:
+    - port: 8082
+      targetPort: 8082
+      protocol: TCP
+      name: http
