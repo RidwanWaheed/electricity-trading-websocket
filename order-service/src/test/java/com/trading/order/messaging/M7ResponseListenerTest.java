@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.trading.common.OrderStatus;
+import com.trading.common.Region;
 import com.trading.common.messaging.M7AckResponse;
 import com.trading.common.messaging.M7FillResponse;
 import com.trading.order.entity.OrderEntity;
@@ -50,7 +51,7 @@ class M7ResponseListenerTest {
             "order-123",
             "corr-456",
             "trader1",
-            "NORTH",
+            Region.NORTH,
             "BUY",
             new BigDecimal("100"),
             new BigDecimal("45.50"));

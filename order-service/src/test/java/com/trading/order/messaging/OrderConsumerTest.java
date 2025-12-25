@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.trading.common.OrderStatus;
+import com.trading.common.Region;
 import com.trading.common.messaging.OrderSubmitMessage;
 import com.trading.order.entity.OrderEntity;
 import com.trading.order.repository.OrderRepository;
@@ -50,7 +51,7 @@ class OrderConsumerTest {
 
   private OrderSubmitMessage createValidOrder(String corrId, String orderId, String username) {
     return new OrderSubmitMessage(
-        corrId, orderId, username, "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("45.50"));
+        corrId, orderId, username, Region.NORTH, "BUY", new BigDecimal("100"), new BigDecimal("45.50"));
   }
 
   @Nested
@@ -126,7 +127,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               "BUY",
               BigDecimal.ZERO,
               new BigDecimal("45.50"));
@@ -147,7 +148,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               "BUY",
               new BigDecimal("-1"),
               new BigDecimal("45.50"));
@@ -164,7 +165,7 @@ class OrderConsumerTest {
     void nullQuantity_shouldBeRejected() {
       var invalidOrder =
           new OrderSubmitMessage(
-              "corr-123", "order-456", "trader1", "NORTH", "BUY", null, new BigDecimal("45.50"));
+              "corr-123", "order-456", "trader1", Region.NORTH, "BUY", null, new BigDecimal("45.50"));
 
       orderConsumer.onOrderSubmit(invalidOrder);
 
@@ -184,7 +185,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               "BUY",
               new BigDecimal("100"),
               BigDecimal.ZERO);
@@ -202,7 +203,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               "BUY",
               new BigDecimal("100"),
               new BigDecimal("-0.01"));
@@ -220,7 +221,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               "BUY",
               new BigDecimal("100"),
               new BigDecimal("0.01"));
@@ -234,42 +235,6 @@ class OrderConsumerTest {
   @Nested
   @DisplayName("Region Validation")
   class RegionValidation {
-
-    @Test
-    @DisplayName("Empty region should be rejected")
-    void emptyRegion_shouldBeRejected() {
-      var invalidOrder =
-          new OrderSubmitMessage(
-              "corr-123",
-              "order-456",
-              "trader1",
-              "",
-              "BUY",
-              new BigDecimal("100"),
-              new BigDecimal("45.50"));
-
-      orderConsumer.onOrderSubmit(invalidOrder);
-
-      verify(orderRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("Blank region should be rejected")
-    void blankRegion_shouldBeRejected() {
-      var invalidOrder =
-          new OrderSubmitMessage(
-              "corr-123",
-              "order-456",
-              "trader1",
-              "   ",
-              "BUY",
-              new BigDecimal("100"),
-              new BigDecimal("45.50"));
-
-      orderConsumer.onOrderSubmit(invalidOrder);
-
-      verify(orderRepository, never()).save(any());
-    }
 
     @Test
     @DisplayName("Null region should be rejected")
@@ -312,7 +277,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               "SELL",
               new BigDecimal("100"),
               new BigDecimal("45.50"));
@@ -331,7 +296,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               orderType,
               new BigDecimal("100"),
               new BigDecimal("45.50"));
@@ -349,7 +314,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               null,
               new BigDecimal("100"),
               new BigDecimal("45.50"));
@@ -372,7 +337,7 @@ class OrderConsumerTest {
               "specific-corr-id",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               "INVALID",
               new BigDecimal("100"),
               new BigDecimal("45.50"));
@@ -396,7 +361,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "",
+              null,
               "BUY",
               new BigDecimal("100"),
               new BigDecimal("45.50"));
@@ -419,7 +384,7 @@ class OrderConsumerTest {
               "corr-999",
               "order-888",
               "specificUser",
-              "SOUTH",
+              Region.SOUTH,
               "SELL",
               new BigDecimal("250.5"),
               new BigDecimal("52.75"));
@@ -433,7 +398,7 @@ class OrderConsumerTest {
       assertEquals("order-888", saved.getOrderId());
       assertEquals("corr-999", saved.getCorrelationId());
       assertEquals("specificUser", saved.getUsername());
-      assertEquals("SOUTH", saved.getRegion());
+      assertEquals(Region.SOUTH, saved.getRegion());
       assertEquals("SELL", saved.getOrderType());
       assertEquals(new BigDecimal("250.5"), saved.getQuantity());
       assertEquals(new BigDecimal("52.75"), saved.getPrice());
@@ -447,7 +412,7 @@ class OrderConsumerTest {
               "corr-123",
               "order-456",
               "trader1",
-              "NORTH",
+              Region.NORTH,
               "BUY",
               new BigDecimal("100.1234"),
               new BigDecimal("45.5678"));

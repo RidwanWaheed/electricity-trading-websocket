@@ -3,6 +3,7 @@ package com.trading.mockm7.messaging;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.trading.common.Region;
 import com.trading.common.messaging.M7AckResponse;
 import com.trading.common.messaging.M7OrderRequest;
 import java.math.BigDecimal;
@@ -41,7 +42,7 @@ class TradingEngineSimulatorTest {
 
   private M7OrderRequest createOrder(String corrId, String orderId) {
     return new M7OrderRequest(
-        corrId, orderId, "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("45.50"));
+        corrId, orderId, Region.NORTH, "BUY", new BigDecimal("100"), new BigDecimal("45.50"));
   }
 
   @Nested
@@ -140,7 +141,7 @@ class TradingEngineSimulatorTest {
     void buyOrder_shouldBeProcessed() {
       var buyOrder =
           new M7OrderRequest(
-              "corr-1", "order-1", "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("45"));
+              "corr-1", "order-1", Region.NORTH, "BUY", new BigDecimal("100"), new BigDecimal("45"));
 
       simulator.processOrder(buyOrder);
 
@@ -152,7 +153,7 @@ class TradingEngineSimulatorTest {
     void sellOrder_shouldBeProcessed() {
       var sellOrder =
           new M7OrderRequest(
-              "corr-1", "order-1", "SOUTH", "SELL", new BigDecimal("50"), new BigDecimal("46"));
+              "corr-1", "order-1", Region.SOUTH, "SELL", new BigDecimal("50"), new BigDecimal("46"));
 
       simulator.processOrder(sellOrder);
 
@@ -164,10 +165,10 @@ class TradingEngineSimulatorTest {
     void differentRegions_shouldBeAccepted() {
       var northOrder =
           new M7OrderRequest(
-              "corr-1", "order-1", "NORTH", "BUY", new BigDecimal("100"), new BigDecimal("45"));
+              "corr-1", "order-1", Region.NORTH, "BUY", new BigDecimal("100"), new BigDecimal("45"));
       var southOrder =
           new M7OrderRequest(
-              "corr-2", "order-2", "SOUTH", "BUY", new BigDecimal("100"), new BigDecimal("45"));
+              "corr-2", "order-2", Region.SOUTH, "BUY", new BigDecimal("100"), new BigDecimal("45"));
 
       simulator.processOrder(northOrder);
       simulator.processOrder(southOrder);
@@ -187,7 +188,7 @@ class TradingEngineSimulatorTest {
           new M7OrderRequest(
               "corr-1",
               "order-1",
-              "NORTH",
+              Region.NORTH,
               "BUY",
               new BigDecimal("999999.9999"),
               new BigDecimal("45"));
@@ -204,7 +205,7 @@ class TradingEngineSimulatorTest {
           new M7OrderRequest(
               "corr-1",
               "order-1",
-              "NORTH",
+              Region.NORTH,
               "BUY",
               new BigDecimal("100"),
               new BigDecimal("45.123456"));

@@ -3,6 +3,7 @@ package com.trading.order.entity;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.trading.common.OrderStatus;
+import com.trading.common.Region;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,7 +34,7 @@ class OrderEntityTest {
             "order-123",
             "corr-456",
             "trader1",
-            "NORTH",
+            Region.NORTH,
             "BUY",
             new BigDecimal("100"),
             new BigDecimal("45.50"));
@@ -73,7 +74,7 @@ class OrderEntityTest {
       assertEquals("order-123", order.getOrderId());
       assertEquals("corr-456", order.getCorrelationId());
       assertEquals("trader1", order.getUsername());
-      assertEquals("NORTH", order.getRegion());
+      assertEquals(Region.NORTH, order.getRegion());
       assertEquals("BUY", order.getOrderType());
       assertEquals(new BigDecimal("100"), order.getQuantity());
       assertEquals(new BigDecimal("45.50"), order.getPrice());
