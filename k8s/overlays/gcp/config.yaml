@@ -1,0 +1,65 @@
+# =============================================================================
+# GCP Configuration: Secrets + ConfigMap
+# =============================================================================
+# GCP-specific credentials and configuration.
+#
+# Key differences from Minikube:
+#   - PostgreSQL: Cloud SQL private IP (10.106.0.3) instead of in-cluster pod
+#   - Credentials: tradingadmin instead of trading
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Secret: Cloud SQL Credentials
+# -----------------------------------------------------------------------------
+# These match the user we created with:
+#   gcloud sql users create tradingadmin --instance=trading-postgres --password=TradingDB2024!
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: trading
+type: Opaque
+data:
+  # echo -n "trading" | base64
+  database: dHJhZGluZw==
+  # echo -n "tradingadmin" | base64
+  username: dHJhZGluZ2FkbWlu
+  # echo -n "TradingDB2024!" | base64
+  password: VHJhZGluZ0RCMjAyNCE=
+
+---
+# -----------------------------------------------------------------------------
+# Secret: RabbitMQ Credentials
+# -----------------------------------------------------------------------------
+# Same as Minikube - RabbitMQ runs in GKE with default credentials
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq-secret
+  namespace: trading
+type: Opaque
+data:
+  # echo -n "guest" | base64
+  username: Z3Vlc3Q=
+  password: Z3Vlc3Q=
+
+---
+# -----------------------------------------------------------------------------
+# ConfigMap: Spring Application Config
+# -----------------------------------------------------------------------------
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-config
+  namespace: trading
+data:
+  SPRING_PROFILES_ACTIVE: "docker"
+  # Cloud SQL private IP (from: gcloud sql instances describe trading-postgres)
+  POSTGRES_HOST: "10.106.0.3"
+  POSTGRES_PORT: "5432"
+  # RabbitMQ still uses K8s DNS (runs in-cluster)
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "5672"

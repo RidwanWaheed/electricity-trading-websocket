@@ -1,7 +1,5 @@
 # Architecture Documentation
 
-This document explains the architectural decisions, design patterns, and system design of this electricity trading platform.
-
 ## Table of Contents
 - [Why Microservices?](#why-microservices)
 - [Service Responsibilities](#service-responsibilities)
@@ -12,8 +10,6 @@ This document explains the architectural decisions, design patterns, and system 
 ---
 
 ## Why Microservices?
-
-This project uses a microservices architecture instead of a monolith. Here's the reasoning:
 
 ### Benefits Demonstrated
 
@@ -304,28 +300,34 @@ flowchart LR
 
 ### Kubernetes Structure
 
-The application can be deployed to Kubernetes (local Minikube or cloud EKS/GKE).
-
 ```
 k8s/
-├── namespace.yaml       # Isolates resources in 'trading' namespace
-├── config.yaml          # Secrets (DB/RabbitMQ creds) + ConfigMap (Spring config)
-├── postgres.yaml        # Deployment + ClusterIP Service
-├── rabbitmq.yaml        # Deployment + ClusterIP Service
-├── gateway.yaml         # Deployment + NodePort Service (external access)
-├── order-service.yaml   # Deployment + ClusterIP Service
-└── mock-m7.yaml         # Deployment + ClusterIP Service
+├── namespace.yaml          # 'trading' namespace
+├── config.yaml             # Secrets + ConfigMap
+├── postgres.yaml           # Local PostgreSQL (Minikube only)
+├── rabbitmq.yaml           # RabbitMQ broker
+├── gateway.yaml            # NodePort for local access
+├── order-service.yaml      # Internal service
+├── mock-m7.yaml            # Internal service
+└── overlays/
+    └── gcp/                # GKE Autopilot deployment
+        ├── kustomization.yaml
+        ├── config.yaml     # Cloud SQL private IP, credentials
+        ├── gateway.yaml    # LoadBalancer (public IP)
+        ├── order-service.yaml
+        ├── mock-m7.yaml
+        └── rabbitmq.yaml
 ```
 
 ### Service Exposure
 
-| Service | Type | Access |
-|---------|------|--------|
-| Gateway | NodePort | External (browser access via port 30080) |
-| Order Service | ClusterIP | Internal only (via RabbitMQ) |
-| Mock M7 | ClusterIP | Internal only (via RabbitMQ) |
-| PostgreSQL | ClusterIP | Internal only |
-| RabbitMQ | ClusterIP | Internal only |
+| Service | Minikube | GKE |
+|---------|----------|-----|
+| Gateway | NodePort (30080) | LoadBalancer (public IP) |
+| Order Service | ClusterIP | ClusterIP |
+| Mock M7 | ClusterIP | ClusterIP |
+| PostgreSQL | ClusterIP (local) | Cloud SQL (private IP) |
+| RabbitMQ | ClusterIP | ClusterIP |
 
 ### Key Kubernetes Concepts Used
 
@@ -337,17 +339,3 @@ k8s/
 | **Secret** | Store credentials (base64 encoded) |
 | **ConfigMap** | Store non-sensitive configuration |
 | **Probes** | Health checks (readiness + liveness) |
-
----
-
-## Learning Outcomes
-
-This project demonstrates understanding of:
-
-1. **Distributed Systems** - Service communication, eventual consistency, fault tolerance
-2. **Real-time Communication** - WebSocket protocols, STOMP messaging, connection management
-3. **Message Queues** - Async processing, decoupling, reliability patterns
-4. **Security** - JWT authentication, filter chains, stateless sessions
-5. **Design Patterns** - State machine, observer, gateway, proxy, repository
-6. **DevOps** - Docker containerization, service orchestration, health checks
-7. **Kubernetes** - Deployments, Services, Secrets, ConfigMaps, health probes

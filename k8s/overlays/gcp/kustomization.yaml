@@ -1,0 +1,19 @@
+# =============================================================================
+# Kustomization for GCP GKE Deployment
+# =============================================================================
+# Usage:
+#   kubectl apply -k k8s/overlays/gcp/
+# =============================================================================
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: trading
+
+resources:
+  - namespace.yaml
+  - config.yaml
+  - rabbitmq.yaml
+  - gateway.yaml
+  - order-service.yaml
+  - mock-m7.yaml

@@ -171,3 +171,71 @@ Key technical decisions made during development.
 - Docker Compose still works for quick local development
 - `imagePullPolicy: Never` required for local Minikube images
 - NodePort for Gateway (external), ClusterIP for internal services
+
+---
+
+## ADR-014: GKE Autopilot over Standard GKE
+
+**Decision:** Use GKE Autopilot instead of Standard mode.
+
+**Rationale:**
+- Pay-per-pod pricing (no idle node costs)
+- Google manages nodes, scaling, and security patches
+- Simpler for learning - focus on apps, not infrastructure
+
+---
+
+## ADR-015: Cloud SQL Private IP Only
+
+**Decision:** Cloud SQL instance has no public IP, uses VPC peering.
+
+**Rationale:**
+- Database never exposed to internet
+- GKE pods connect via private `10.x.x.x` address
+- Requires VPC peering setup but more secure
+
+---
+
+## ADR-016: RabbitMQ Self-Hosted in GKE
+
+**Decision:** Run RabbitMQ as a container in GKE (same as Minikube).
+
+**Rationale:**
+- GCP has no managed RabbitMQ service
+- Alternatives (Pub/Sub, Cloud Tasks) require code changes
+- Self-hosted is acceptable for learning; production would use CloudAMQP or similar
+
+---
+
+## ADR-017: europe-west3 Region (Frankfurt)
+
+**Decision:** Deploy all resources in europe-west3.
+
+**Rationale:**
+- GDPR-compliant (data stays in EU)
+- All resources co-located (GKE, Cloud SQL, Artifact Registry)
+- Low latency for European users
+
+---
+
+## ADR-018: Dedicated Database User
+
+**Decision:** Create `tradingadmin` user instead of using `postgres` superuser.
+
+**Rationale:**
+- Principle of least privilege
+- If app is compromised, attacker has limited DB access
+- Production best practice
+
+---
+
+## ADR-019: Self-Contained K8s Overlays
+
+**Decision:** Duplicate manifests in each overlay instead of using Kustomize base references.
+
+**Rationale:**
+- Kustomize blocks `../../` references for security
+- Proper base/overlay structure adds complexity for a learning project
+- Each overlay is self-contained and easy to understand
+
+**Trade-off:** Some file duplication between `k8s/` (Minikube) and `k8s/overlays/gcp/`

@@ -1,0 +1,102 @@
+# =============================================================================
+# Mock M7 Service for GCP GKE
+# =============================================================================
+# Key differences from Minikube:
+#   1. Image: Pulls from Artifact Registry
+#   2. Resource requests: Required by GKE Autopilot
+#
+# Note: Mock M7 has no database connection (stateless)
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-m7
+  namespace: trading
+  labels:
+    app: mock-m7
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mock-m7
+  template:
+    metadata:
+      labels:
+        app: mock-m7
+    spec:
+      containers:
+        - name: mock-m7
+          image: europe-west3-docker.pkg.dev/trading-platform-ridwan/trading-images/mock-m7:latest
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8082
+              name: http
+
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: SPRING_PROFILES_ACTIVE
+
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: RABBITMQ_HOST
+
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: username
+
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: password
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-m7
+  namespace: trading
+spec:
+  type: ClusterIP
+  selector:
+    app: mock-m7
+  ports:
+    - port: 8082
+      targetPort: 8082
+      protocol: TCP
+      name: http

@@ -1,0 +1,125 @@
+# =============================================================================
+# Gateway Service for GCP GKE
+# =============================================================================
+# Key differences from Minikube:
+#   1. Image: Pulls from Artifact Registry (not local)
+#   2. imagePullPolicy: Always (fetch from registry)
+#   3. Service type: LoadBalancer (gets public IP instead of NodePort)
+#   4. Database URL: Cloud SQL private IP
+# =============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: trading
+  labels:
+    app: gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+        - name: gateway
+          # Artifact Registry image (pushed earlier)
+          image: europe-west3-docker.pkg.dev/trading-platform-ridwan/trading-images/gateway:latest
+
+          # Always pull from registry (not cached locally)
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 8080
+              name: http
+
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: SPRING_PROFILES_ACTIVE
+
+            # Cloud SQL connection (private IP)
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://10.106.0.3:5432/trading"
+
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            - name: SPRING_RABBITMQ_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: spring-config
+                  key: RABBITMQ_HOST
+
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: username
+
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-secret
+                  key: password
+
+          # GKE Autopilot requires resource requests
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+---
+# LoadBalancer: GCP creates a public IP + Network Load Balancer
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: trading
+spec:
+  type: LoadBalancer    # Gets a public IP from GCP
+
+  selector:
+    app: gateway
+
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
